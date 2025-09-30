@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mobilní Galerie</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@9/swiper-bundle.min.css" />
+<style>
+/* Reset a základní styly */
+* { box-sizing: border-box; margin:0; padding:0; }
+
+body { font-family:-apple-system, BlinkMacSystemFont,"Segoe UI", Roboto, sans-serif; background-color:#f2f2f7; color:#000; }
+
+header { display:flex; justify-content:space-between; align-items:center; padding:15px; background-color:#fff; box-shadow:0 1px 5px rgba(0,0,0,0.1); }
+
+header h1 { font-size:20px; font-weight:600; }
+
+button { padding:10px 15px; border:none; border-radius:12px; background-color:#007aff; color:#fff; font-size:16px; cursor:pointer; }
+
+button:hover { background-color:#005bb5; }
+
+#albums { padding:10px; }
+
+.album { background-color:#fff; padding:15px; margin-bottom:10px; border-radius:16px; display:flex; justify-content:space-between; align-items:center; cursor:pointer; box-shadow:0 2px 5px rgba(0,0,0,0.1); }
+
+#fileInput { display:none; }
+
+.swiper { width:100%; height:80vh; background-color:#000; display:none; }
+
+.swiper-slide { display:flex; justify-content:center; align-items:center; }
+
+.swiper-slide img, .swiper-slide video { max-width:100%; max-height:100%; border-radius:12px; }
+
+/* Heslo overlay */
+#passwordOverlay {
+    position:fixed;
+    top:0; left:0; width:100%; height:100%;
+    background-color:rgba(0,0,0,0.95);
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    flex-direction:column;
+    z-index:2000;
+}
+
+#passwordOverlay input {
+    padding:15px;
+    font-size:20px;
+    border-radius:12px;
+    border:none;
+    margin-bottom:15px;
+}
+
+#passwordOverlay button {
+    font-size:20px;
+    padding:12px 25px;
+}
+
+</style>
+</head>
+<body>
+
+<!-- Heslo overlay -->
+<div id="passwordOverlay">
+    <h2 style="color:white; margin-bottom:20px;">Zadejte heslo</h2>
+    <input type="password" id="passwordInput" placeholder="Heslo">
+    <button id="passwordBtn">Odeslat</button>
+    <div id="passwordMessage" style="color:red; margin-top:10px;"></div>
+</div>
+
+<header>
+    <h1>Moje Galerie</h1>
+    <button id="addFileBtn">+ Přidat</button>
+</header>
+
+<div id="albums"></div>
+<input type="file" id="fileInput" accept="image/*,video/*" multiple>
+
+<div class="swiper" id="swiperContainer">
+    <div class="swiper-wrapper" id="swiperWrapper"></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/swiper@9/swiper-bundle.min.js"></script>
+<script>
+// ====== HESLO ======
+const passwordOverlay = document.getElementById('passwordOverlay');
+const passwordInput = document.getElementById('passwordInput');
+const passwordBtn = document.getElementById('passwordBtn');
+const passwordMessage = document.getElementById('passwordMessage');
+
+passwordBtn.addEventListener('click', () => {
+    if(passwordInput.value === '777') {
+        passwordOverlay.style.display = 'none';
+        initDB();
+    } else {
+        passwordMessage.textContent = 'Špatné heslo!';
+    }
+});
+
+// ====== INDEXEDDB ======
+let db;
+const fileInput = document.getElementById('fileInput');
+const addFileBtn = document.getElementById('addFileBtn');
+const albumsDiv = document.getElementById('albums');
+const swiperContainer = document.getElementById('swiperContainer');
+const swiperWrapper = document.getElementById('swiperWrapper');
+let swiper;
+
+function initDB() {
+    const request = indexedDB.open("GalleryDB", 1);
+    request.onupgradeneeded = function(event) {
+        db = event.target.result;
+        const store = db.createObjectStore("albums", { keyPath: "name" });
+    };
+    request.onsuccess = function(event) {
+        db = event.target.result;
+        loadAlbums();
+    };
+    request.onerror = function(event) { console.error("DB error", event); }
+}
+
+// Přidání souborů
+function addFiles(files, albumName="Default") {
+    const transaction = db.transaction(["albums"], "readwrite");
+    const store = transaction.objectStore("albums");
+    const getRequest = store.get(albumName);
+    getRequest.onsuccess = function() {
+        let album = getRequest.result || { name: albumName, files: [] };
+        Array.from(files).forEach(file => {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                album.files.push({type:file.type, data:e.target.result});
+                store.put(album);
+                loadAlbums();
+            }
+            reader.readAsDataURL(file);
+        });
+    }
+}
+
+// Načtení složek
+function loadAlbums() {
+    albumsDiv.innerHTML = '';
+    const transaction = db.transaction(["albums"], "readonly");
+    const store = transaction.objectStore("albums");
+    const request = store.openCursor();
+    request.onsuccess = function(event) {
+        const cursor = event.target.result;
+        if(cursor) {
+            const albumDiv = document.createElement('div');
+            albumDiv.className = 'album';
+            albumDiv.textContent = cursor.key + " ("+cursor.value.files.length+" souborů)";
+            albumDiv.addEventListener('click', () => openAlbum(cursor.key));
+            
+            // Přidání tlačítka pro smazání složky
+            const delBtn = document.createElement('button');
+            delBtn.textContent = '🗑️';
+            delBtn.style.marginLeft = '10px';
+            delBtn.addEventListener('click', (e)=>{
+                e.stopPropagation();
+                const delTransaction = db.transaction(["albums"], "readwrite");
+                delTransaction.objectStore("albums").delete(cursor.key);
+                loadAlbums();
+            });
+            albumDiv.appendChild(delBtn);
+
+            albumsDiv.appendChild(albumDiv);
+            cursor.continue();
+        }
+    };
+}
+
+// Otevření album a zobrazení ve swiperu
+function openAlbum(albumName) {
+    const transaction = db.transaction(["albums"], "readonly");
+    const store = transaction.objectStore("albums");
+    const request = store.get(albumName);
+    request.onsuccess = function() {
+        const album = request.result;
+        if(album && album.files.length > 0) {
+            swiperWrapper.innerHTML = '';
+            album.files.forEach((f, idx) => {
+                const slide = document.createElement('div');
+                slide.className = 'swiper-slide';
+                if(f.type.startsWith('image/')) {
+                    const img = document.createElement('img');
+                    img.src = f.data;
+                    slide.appendChild(img);
+                } else if(f.type.startsWith('video/')) {
+                    const vid = document.createElement('video');
+                    vid.src = f.data;
+                    vid.controls = true;
+                    slide.appendChild(vid);
+                }
+
+                // Přidání smazání souboru
+                const delBtn = document.createElement('button');
+                delBtn.textContent = '🗑️';
+                delBtn.style.position='absolute';
+                delBtn.style.top='10px';
+                delBtn.style.right='10px';
+                delBtn.addEventListener('click', ()=>{
+                    album.files.splice(idx,1);
+                    const tx = db.transaction(["albums"], "readwrite");
+                    tx.objectStore("albums").put(album);
+                    openAlbum(albumName);
+                });
+                slide.appendChild(delBtn);
+
+                swiperWrapper.appendChild(slide);
+            });
+            swiperContainer.style.display = 'block';
+            swiper = new Swiper('.swiper', { loop:true, navigation:true });
+        }
+    };
+}
+
+// Eventy
+addFileBtn.addEventListener('click', ()=> fileInput.click());
+fileInput.addEventListener('change', ()=> addFiles(fileInput.files));
+
+</script>
+</body>
+</html>
