@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>iOS Galerie</title>
+<style>
+/* Reset a základní styly */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background-color: #f2f2f7;
+    color: #000;
+    padding: 20px;
+}
+
+/* Nadpis */
+h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-weight: 600;
+}
+
+/* Formulář nahrávání */
+form {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 20px;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+input[type="file"] {
+    font-size: 18px;
+    padding: 12px;
+    border-radius: 12px;
+    border: 1px solid #ccc;
+    cursor: pointer;
+}
+
+button {
+    padding: 12px 25px;
+    border: none;
+    background-color: #007aff;
+    color: white;
+    border-radius: 12px;
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 18px;
+}
+
+button:hover {
+    background-color: #005bb5;
+}
+
+/* Galerie */
+#gallery {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 10px;
+}
+
+/* Miniatury */
+#gallery img {
+    width: 100%;
+    height: 120px;
+    object-fit: cover;
+    border-radius: 16px;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+#gallery img:hover {
+    transform: scale(1.05);
+}
+
+/* Fullscreen overlay */
+#overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.95);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    visibility: hidden;
+    opacity: 0;
+    transition: opacity 0.3s;
+    z-index: 1000;
+}
+
+#overlay img {
+    max-width: 95%;
+    max-height: 95%;
+    border-radius: 12px;
+}
+
+#overlay.visible {
+    visibility: visible;
+    opacity: 1;
+}
+
+/* Close button */
+#overlay span {
+    position: absolute;
+    top: 20px;
+    right: 30px;
+    font-size: 40px;
+    color: white;
+    cursor: pointer;
+    user-select: none;
+}
+</style>
+</head>
+<body>
+
+<h1>Moje Galerie</h1>
+
+<form id="uploadForm">
+    <input type="file" id="fileInput" accept="image/*" multiple>
+    <button type="submit">Vybrat z galerie</button>
+</form>
+
+<div id="gallery"></div>
+
+<!-- Fullscreen overlay -->
+<div id="overlay">
+    <span id="close">&times;</span>
+    <img src="" alt="Fullscreen">
+</div>
+
+<script>
+const form = document.getElementById('uploadForm');
+const gallery = document.getElementById('gallery');
+const overlay = document.getElementById('overlay');
+const overlayImg = overlay.querySelector('img');
+const closeBtn = document.getElementById('close');
+
+// Načíst fotky z LocalStorage
+function loadGallery() {
+    gallery.innerHTML = '';
+    const photos = JSON.parse(localStorage.getItem('photos') || '[]');
+    photos.forEach((dataUrl, index) => {
+        const img = document.createElement('img');
+        img.src = dataUrl;
+        img.dataset.index = index;
+        img.addEventListener('click', () => showFullscreen(index));
+        gallery.appendChild(img);
+    });
+}
+
+// Nahrávání fotek z galerie telefonu
+form.addEventListener('submit', e => {
+    e.preventDefault();
+    const files = document.getElementById('fileInput').files;
+    if (!files.length) return;
+
+    const photos = JSON.parse(localStorage.getItem('photos') || '[]');
+    Array.from(files).forEach(file => {
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            photos.push(event.target.result);
+            localStorage.setItem('photos', JSON.stringify(photos));
+            loadGallery();
+        };
+        reader.readAsDataURL(file);
+    });
+    form.reset();
+});
+
+// Fullscreen
+function showFullscreen(index) {
+    const photos = JSON.parse(localStorage.getItem('photos') || '[]');
+    overlayImg.src = photos[index];
+    overlay.classList.add('visible');
+}
+
+// Zavřít fullscreen
+closeBtn.addEventListener('click', () => {
+    overlay.classList.remove('visible');
+});
+
+overlay.addEventListener('click', e => {
+    if (e.target === overlay) overlay.classList.remove('visible');
+});
+
+loadGallery();
+</script>
+
+</body>
+</html>
