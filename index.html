@@ -462,6 +462,20 @@
       border-radius: 8px;
       border: 1px dashed #ff9900;
   }
+  
+  /* Styl pro graf v Historii (Bod 2 - Zobrazení Historie) */
+  .history-month-card {
+      background: var(--card);
+      padding: 15px;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+  }
+  .history-month-card h4 {
+      margin-bottom: 10px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 5px;
+  }
+
 
 </style>
 </head>
@@ -958,14 +972,20 @@ function showSection(e){
   // Přesun na začátek obsahu sekce (.wrap je element, který se scrolluje)
   document.querySelector('.wrap').scrollTop = 0;
   
+  // Oprava BODU 2: Analýza
   if(sec === 'stats') computeStats();
   if(sec === 'cards') renderCards(); 
   if(sec === 'goals') { 
     renderGoals();
-    renderRecurringPaymentsGoalSection(); // Zobrazení trvalých plateb v sekci Cíle
+    // BOD 1: Zobrazení trvalých plateb k úhradě
+    renderRecurringPaymentsGoalSection(); 
   }
   if(sec === 'history') renderHistory();
-  if(sec === 'settings') renderCategories(); renderRecurringPaymentsManagement(); // Render správy trvalých plateb
+  if(sec === 'settings') {
+    renderCategories(); 
+    // BOD 1: Render správy trvalých plateb
+    renderRecurringPaymentsManagement(); 
+  }
 }
 
 
@@ -1004,6 +1024,7 @@ function renderMonthOptions() {
     const options = [];
     const monthNames = ["Leden", "Únor", "Březen", "Duben", "Květen", "Červen", "Červenec", "Srpen", "Září", "Říjen", "Listopad", "Prosinec"];
 
+    // Procházíme 12 měsíců zpět plus aktuální měsíc (celkem 13 měsíců)
     for (let i = 0; i < 12; i++) {
         const date = new Date(today.getFullYear(), today.getMonth() - i, 1);
         const year = date.getFullYear();
@@ -1020,7 +1041,7 @@ function renderMonthOptions() {
         option.value = opt.value;
         option.textContent = opt.label;
         if (index === options.length - 1) { 
-            option.selected = true;
+            option.selected = true; // Vybrat aktuální měsíc
         }
         select.appendChild(option);
     });
@@ -1054,6 +1075,10 @@ function updateCategorySelects() {
                 opt.textContent = c.name;
                 select.appendChild(opt);
             });
+            // Zajistíme, že je vybrána platná hodnota (i po případném smazání)
+            if (!expenseCategories.some(c => c.name === select.value) && expenseCategories.length > 0) {
+                 select.value = expenseCategories[0].name;
+            }
             return;
         }
 
@@ -1537,24 +1562,26 @@ function renderRecurringPaymentsManagement() {
         return;
     }
 
-    // Získání aktuálního měsíce a roku z filtru (nebo z dneška, pokud filtr není aktivní)
-    const filterFrom = $('filterFrom').value ? new Date($('filterFrom').value) : new Date();
-    const filterTo = $('filterTo').value ? new Date($('filterTo').value) : new Date();
+    // Získání aktuálního data
+    const today = new Date();
+    const filterFrom = $('filterFrom').value ? new Date($('filterFrom').value) : today;
+    const filterTo = $('filterTo').value ? new Date($('filterTo').value) : today;
     
-    const currentMonth = filterFrom.getMonth();
-    const currentYear = filterFrom.getFullYear();
+    // Nastavení konce filtru na konec dne pro přesné porovnání
+    let filterToDate = filterTo;
+    filterToDate.setHours(23, 59, 59, 999); 
     
-    // Pomocná funkce, která zjistí, zda byla platba uhrazena V AKTUÁLNÍM MĚSÍCI FILTRU
-    const isPaidInCurrentFilterMonth = (payment) => {
+    // Pomocná funkce, která zjistí, zda byla platba uhrazena V AKTUÁLNÍM ROZSAHU FILTRU
+    const isPaidInCurrentFilterPeriod = (payment) => {
         if (!payment.lastPaidDate) return false;
         const lastPaid = new Date(payment.lastPaidDate);
         // Kontroluje, zda datum úhrady spadá do rozsahu filtru
-        return lastPaid >= filterFrom && lastPaid <= filterTo;
+        return lastPaid >= filterFrom && lastPaid <= filterToDate;
     };
 
 
     store.recurringPayments.forEach(r => {
-        const isPaid = isPaidInCurrentFilterMonth(r);
+        const isPaid = isPaidInCurrentFilterPeriod(r);
         
         const item = document.createElement('div');
         item.className = 'card recurring-payment-card';
@@ -1575,7 +1602,7 @@ function renderRecurringPaymentsManagement() {
                     </button>
                 </div>
             `;
-            item.style.borderLeftColor = 'var(--accent2)'; // Zelená, že je v tomto měsíci zaplaceno
+            item.style.borderLeftColor = 'var(--accent2)'; // Zelená, že je v tomto období zaplaceno
         } else {
             // Platba není zaplacená v aktuálním období - jen informace o poslední úhradě
             const lastPaidInfo = r.lastPaidDate ? formatDate(r.lastPaidDate) : 'Nezaplaceno';
@@ -1605,12 +1632,12 @@ function reactivateRecurringPayment(id) {
     const payment = store.recurringPayments.find(r => r.id === id);
     if (!payment) return;
 
-    if (confirm(`Opravdu chcete platbu "${payment.name}" nastavit jako NEUHRAZENOU pro aktuální období?`)) {
+    if (confirm(`Opravdu chcete platbu "${payment.name}" nastavit jako NEUHRAZENOU pro aktuální období? Vytvořená transakce ZŮSTANE v rozpočtu - musíte ji smazat ručně.`)) {
         // Nastavíme lastPaidDate na null, což znamená, že je potřeba ji znova zaplatit.
         payment.lastPaidDate = null; 
         saveStore();
         
-        alert(`Platba "${payment.name}" byla znovu aktivována.`);
+        alert(`Platba "${payment.name}" byla znovu aktivována (transakce NEBYLA smazána, udělejte to ručně v "Účet").`);
         
         renderRecurringPaymentsManagement();
         renderRecurringPaymentsGoalSection();
@@ -1685,7 +1712,7 @@ function renderRecurringPaymentsGoalSection() {
     const list = $('recurringPaymentsGoalList');
     list.innerHTML = '';
     
-    // Získání aktuálně nezaplacených plateb pro aktuální měsíc (na základě filtru)
+    // Získání nezaplacených plateb pro aktuální období filtru
     const upcoming = getUpcomingPayments($('filterFrom').value, $('filterTo').value);
     
     if (upcoming.length === 0) {
@@ -1719,7 +1746,7 @@ function markRecurringPaymentAsPaid(id) {
     const payment = store.recurringPayments.find(r => r.id === id);
     if (!payment) return;
 
-    if (!confirm(`Opravdu chcete zaznamenat úhradu ${formatAmount(payment.amount)} za "${payment.name}"? Tímto se platba **odečte** z Vašeho zůstatku.`)) {
+    if (!confirm(`Opravdu chcete zaznamenat úhradu ${formatAmount(payment.amount)} za "${payment.name}"? Tímto se platba **odečte** z Vašeho rozpočtu a vytvoří se transakce.`)) {
         return;
     }
     
@@ -1761,21 +1788,19 @@ function getUpcomingPayments(filterFrom, filterTo) {
 
     return store.recurringPayments.filter(r => {
         const lastPaidDate = r.lastPaidDate ? new Date(r.lastPaidDate) : null;
-        const dueDay = r.dueDate;
         
-        // Vytvoření data splatnosti pro aktuální měsíc filtru
-        // Vezmeme rok a měsíc z data filtru
-        const filterMonth = fDate.getMonth(); 
-        const filterYear = fDate.getFullYear();
+        // Zjištění splatnosti v rámci období - ZDE JE KLÍČOVÝ PŘEDPOKLAD
+        // Předpokládáme, že splatnost se zvažuje v rámci období, aby se zabránilo vícenásobným úhradám za jedno období.
+        // Konkrétně: Platba je splatná, pokud poslední úhrada NENÍ v rámci filtračního období.
         
-        // Ošetření, že den 31 neexistuje v únoru atp. (převedeno na poslední den měsíce)
-        const dateObj = new Date(filterYear, filterMonth, dueDay); 
+        // Vytvoření data splatnosti pro MĚSÍC ZAČÁTKU FILTRU (jednoduchý, ale robustní způsob kontroly)
+        const filterMonthStart = new Date(fDate.getFullYear(), fDate.getMonth(), r.dueDate);
         
         // Zkontrolujeme, zda datum splatnosti spadá do rozsahu filtru (jednoduchá kontrola)
-        const isDueInFilterPeriod = dateObj >= fDate && dateObj <= filterToDate;
+        const isDueInFilterPeriod = filterMonthStart >= fDate && filterMonthStart <= filterToDate;
 
         if (isDueInFilterPeriod) {
-            // Je splatná v tomto měsíci (období)
+            // Je splatná v tomto období filtru
             if (lastPaidDate) {
                 // Kontrola, zda poslední úhrada spadá do AKTIVNÍHO FILTRAČNÍHO ROZSAHU
                 if (lastPaidDate >= fDate && lastPaidDate <= filterToDate) {
@@ -1785,7 +1810,7 @@ function getUpcomingPayments(filterFrom, filterTo) {
             return true; // Je splatná a neuhrazená v rámci filtru
         }
         
-        return false; // Nespadá do období
+        return false; // Nespadá do období, nebo je uhrazená z předchozího filtru.
     });
 }
 
@@ -1881,6 +1906,8 @@ function renderTransactionTable(transactions){
         // Změna barvy zůstatku na žlutou, pokud je zůstatek > 0, ale po odečtení by byl záporný
         if (totalBalance > 0 && (totalBalance - upcomingPaymentsTotal) < 0) {
             balanceEl.style.color = '#ff9900';
+        } else if (totalBalance <= 0) {
+            // Pokud je zůstatek už záporný, necháme červenou, ale indikátor tam je
         }
     } else {
         upcomingSumEl.style.display = 'none';
@@ -1922,7 +1949,7 @@ function applyFilter(){
     // Aktualizovat i sekci cílů s platbami, které závisí na filtru
     if(document.querySelector('.footer-nav button[data-section="goals"]').classList.contains('active')) renderRecurringPaymentsGoalSection();
     
-    // Spustíme computeStats pouze pokud je sekce aktivní
+    // Spustíme computeStats, pokud je sekce Analýza aktivní (BOD 2)
     if(document.querySelector('.footer-nav button[data-section="stats"]').classList.contains('active')) computeStats();
     
     // DŮLEŽITÉ: Aktualizace Správy trvalých plateb při změně filtru
@@ -1988,6 +2015,7 @@ function computeStats(){
         const card = document.createElement('div'); 
         card.className=`stat-card ${cat.type === 'income' ? 'income' : 'expense'}`;
         
+        // Zajištění, že se počítá procento z celkového příjmu/výdaje
         const total = cat.type === 'income' ? totalIncome : totalExpense;
         const percentage = total > 0 ? ((cat.amount / total) * 100).toFixed(1) : 0;
 
@@ -2044,7 +2072,10 @@ function renderHistory(){
         const incCZK = store.currency === 'EUR' ? totalIncome * store.exchangeRate : totalIncome;
         const expCZK = store.currency === 'EUR' ? totalExpense * store.exchangeRate : totalExpense;
         
-        maxAmount = Math.max(maxAmount, incCZK, expCZK);
+        // Zde vezmeme i nulu, ale jen pokud je alespoň jedna transakce
+        if (store.transactions.length > 0) {
+             maxAmount = Math.max(maxAmount, incCZK, expCZK);
+        }
     }
     
     // 2. Vykreslení karet s grafy (OPRAVA BODU 4)
@@ -2059,9 +2090,15 @@ function renderHistory(){
         const incomeValueForMax = store.currency === 'EUR' ? stats.income * store.exchangeRate : stats.income;
         const expenseValueForMax = store.currency === 'EUR' ? stats.expense * store.exchangeRate : stats.expense;
 
+        // Aby se to nesčítalo, ale bralo poměr vůči celkovému max (příjmu nebo výdaje v daném měsíci)
         const incomeHeight = maxAmount > 0 ? (incomeValueForMax / maxAmount) * 100 : 0;
         const expenseHeight = maxAmount > 0 ? (expenseValueForMax / maxAmount) * 100 : 0;
         
+        // Zobrazení tisíců (Tis. Kč / Tis. €)
+        const currencyUnit = store.currency;
+        const incomeLabel = stats.income > 0 ? (stats.income / 1000).toFixed(1) + 'Tis.' : '0';
+        const expenseLabel = stats.expense > 0 ? (stats.expense / 1000).toFixed(1) + 'Tis.' : '0';
+
         card.innerHTML = `
             <h4>${stats.name}</h4>
             <div class="history-stat-grid" style="display:grid; grid-template-columns: 1fr 1fr; gap: 8px;">
@@ -2073,17 +2110,119 @@ function renderHistory(){
             <div class="chart-container" style="display:flex; height:100px; gap:10px; margin-top:15px; align-items:flex-end; border-bottom:1px solid var(--border);">
                 <div class="chart-bar-wrap" style="height:100%; display:flex; flex-direction:column-reverse; align-items:center; flex-grow:1; min-width:40px;">
                     <div class="chart-bar income" style="width: 25px; background: var(--accent2); height: ${incomeHeight}%; transition:height 0.5s; border-radius:3px 3px 0 0;"></div>
-                    <div class="chart-label muted" style="font-size:0.7em; margin-bottom:5px;">${stats.income > 0 ? Math.round(stats.income / 1000) + 'tis.' : ''}</div>
+                    <div class="chart-label muted" style="font-size:0.7em; margin-bottom:5px;">${incomeLabel}</div>
                 </div>
                 <div class="chart-bar-wrap" style="height:100%; display:flex; flex-direction:column-reverse; align-items:center; flex-grow:1; min-width:40px;">
                     <div class="chart-bar expense" style="width: 25px; background: var(--danger); height: ${expenseHeight}%; transition:height 0.5s; border-radius:3px 3px 0 0;"></div>
-                    <div class="chart-label muted" style="font-size:0.7em; margin-bottom:5px;">${stats.expense > 0 ? Math.round(stats.expense / 1000) + 'tis.' : ''}</div>
+                    <div class="chart-label muted" style="font-size:0.7em; margin-bottom:5px;">${expenseLabel}</div>
                 </div>
             </div>
-            <div class="muted" style="text-align:center; font-size:0.8em; margin-top:5px;">Příjmy / Výdaje (Tis. ${store.currency})</div>
+            <div class="muted" style="text-align:center; font-size:0.8em; margin-top:5px;">Příjmy / Výdaje (Tis. ${currencyUnit})</div>
         `;
         listCont.appendChild(card);
     });
+}
+
+
+function renderCards(){
+    const list = $('cardsList');
+    list.innerHTML = '';
+    
+    // Funkce pro simulaci kopírování do schránky
+    window.copyToClipboard = (text, type) => {
+        navigator.clipboard.writeText(text).then(() => {
+            const statusEl = $('global-copy-status');
+            statusEl.textContent = `${type} zkopírováno!`;
+            statusEl.classList.add('show');
+            setTimeout(() => {
+                statusEl.classList.remove('show');
+            }, 1500);
+        }).catch(err => {
+            console.error('Nepodařilo se zkopírovat: ', err);
+            alert(`Zkopírujte ručně: ${text}`);
+        });
+    };
+    
+    // Pridani fce deleteCard pro karty
+    window.deleteCard = (id) => {
+        if(confirm('Opravdu chcete tuto kartu smazat?')) {
+            store.cards = store.cards.filter(c => c.id !== id);
+            saveStore();
+            renderCards();
+        }
+    };
+
+    store.cards.forEach(card => {
+        const cardEl = document.createElement('div');
+        cardEl.className = `amex-card ${card.type}-card`;
+        
+        const issuerName = card.type.includes('amex') ? 'AMERICAN EXPRESS' : card.type.toUpperCase();
+        
+        cardEl.innerHTML = `
+            <div class="amex-card-header">
+                <div class="card-issuer">${issuerName}</div>
+                <div class="amex-logo">AX</div>
+            </div>
+            
+            <div class="card-chip"></div>
+            
+            <div class="card-number">
+                <span>${card.number.match(/.{1,4}/g).join(' ')}</span>
+                <button class="card-copy-btn" onclick="event.stopPropagation(); copyToClipboard('${card.number}', 'Číslo karty')"><i class="fa fa-copy"></i></button>
+            </div>
+
+            <div class="card-details">
+                <div class="card-owner-info">
+                    <div>Držitel karty</div>
+                    <div class="card-owner">${card.owner}</div>
+                </div>
+                <div class="card-valid-thru">
+                    <div>Platnost</div>
+                    <strong>${card.expiry}</strong>
+                    <button class="card-copy-btn" onclick="event.stopPropagation(); copyToClipboard('${card.cvv}', 'CVV/CVC')"><i class="fa fa-lock"></i> ${card.cvv}</button>
+                    <button class="card-copy-btn" style="color:var(--danger)" onclick="event.stopPropagation(); deleteCard('${card.id}')"><i class="fa fa-trash"></i></button>
+                </div>
+            </div>
+        `;
+        list.appendChild(cardEl);
+    });
+    
+    if (store.cards.length === 0) {
+        list.innerHTML = '<div class="muted" style="margin-top:10px">Zatím nebyly přidány žádné karty.</div>';
+    }
+}
+
+
+function addCard() {
+    const type = $('newCardType').value;
+    const number = $('newCardNumber').value.trim().replace(/\s/g, '');
+    const expiry = $('newCardExpiry').value.trim();
+    const cvv = $('newCardCVV').value.trim();
+    const owner = $('newCardOwner').value.trim().toUpperCase();
+
+    if (number.length < 16 || !expiry || !cvv || !owner) {
+        alert('Vyplňte prosím všechna pole správně. Číslo karty musí mít alespoň 16 číslic.');
+        return;
+    }
+    
+    const newCard = {
+        id: Math.random().toString(36).substring(2, 9),
+        type: type,
+        number: number,
+        expiry: expiry,
+        cvv: cvv,
+        owner: owner
+    };
+    
+    store.cards.push(newCard);
+    saveStore();
+    
+    $('newCardNumber').value = '';
+    $('newCardExpiry').value = '';
+    $('newCardCVV').value = '';
+    $('newCardOwner').value = '';
+    
+    renderCards();
 }
 
 
@@ -2202,9 +2341,6 @@ function updateThemeButton(theme){
     }
 }
 
-// Odstraněno resize listener a mousemove listener, jelikož se starfield nepoužívá.
-
-
 /* init */
 (function init(){
   const savedTheme = localStorage.getItem('theme') || 'light';
@@ -2216,4 +2352,3 @@ function updateThemeButton(theme){
 
 </body>
 </html>
-
