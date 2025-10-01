@@ -446,7 +446,8 @@
     gap: 5px;
   }
   .recurring-payment-card {
-      border-left: 5px solid #ff9900;
+      /* Změněno, barva se nastavuje dynamicky v JS */
+      border-left: 5px solid #ff9900; 
   }
   .upcoming-item {
       padding: 12px;
@@ -609,8 +610,8 @@
 
   <section id="section-goals" style="display:none">
     <div class="card">
-        <h2><i class="fa fa-calendar-check" style="color:#ff9900;"></i> Trvalé Platby k Úhradě (BOD 1)</h2>
-        <div class="muted">Přehled stálých výdajů, kde můžete **vybrat, že je platba zaplacená**.</div>
+        <h2><i class="fa fa-calendar-check" style="color:#ff9900;"></i> Trvalé Platby k Úhradě</h2>
+        <div class="muted">Přehled stálých výdajů, které **nebyly uhrazeny** v rámci aktuálního filtračního období.</div>
         <div id="recurringPaymentsGoalList" style="margin-top:10px"></div>
     </div>
     
@@ -668,8 +669,8 @@
 
   <section id="section-settings" style="display:none">
     <div class="card">
-      <h2><i class="fa fa-calendar-alt" style="color:#ff9900;"></i> Správa Trvalých Plateb (BOD 1)</h2>
-      <p class="muted">Nastavte pravidelné platby (paušály, předplatné), které se budou automaticky odečítat.</p>
+      <h2><i class="fa fa-calendar-alt" style="color:#ff9900;"></i> Správa Trvalých Plateb</h2>
+      <p class="muted">Nastavte pravidelné platby (paušály, předplatné). <span style="font-weight:700; color:#ff9900;">Nezaplacené se zobrazí v sekci Účet a Cíle.</span></p>
 
       <div style="margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;border:1px solid var(--border);padding:15px;border-radius:12px;background:var(--bg)">
         <input type="text" id="newRecurringName" placeholder="Název platby (např. 'Netflix')" style="flex-grow:1"/>
@@ -920,7 +921,9 @@ function formatDate(d){
     if(!d) return '';
     const dt = new Date(d); 
     if(isNaN(dt.getTime())) { return d; }
-    return dt.toLocaleDateString('cs-CZ'); 
+    // Přidáno +1 den pro správné zobrazení při převodu z ISO (v date inputu)
+    const formattedDate = new Date(dt.getTime() + (dt.getTimezoneOffset() * 60000));
+    return formattedDate.toLocaleDateString('cs-CZ'); 
 }
 function formatAmount(amount, currencyCode = store.currency){
     let finalAmount = amount;
@@ -1563,13 +1566,13 @@ function renderRecurringPaymentsManagement() {
     }
 
     // Získání aktuálního data
-    const today = new Date();
-    const filterFrom = $('filterFrom').value ? new Date($('filterFrom').value) : today;
-    const filterTo = $('filterTo').value ? new Date($('filterTo').value) : today;
+    const filterFrom = $('filterFrom').value ? new Date($('filterFrom').value) : new Date();
+    const filterTo = $('filterTo').value ? new Date($('filterTo').value) : new Date();
     
     // Nastavení konce filtru na konec dne pro přesné porovnání
-    let filterToDate = filterTo;
-    filterToDate.setHours(23, 59, 59, 999); 
+    let filterToDate = new Date(filterTo);
+    filterToDate.setDate(filterToDate.getDate() + 1); 
+    filterToDate.setSeconds(filterToDate.getSeconds() - 1); 
     
     // Pomocná funkce, která zjistí, zda byla platba uhrazena V AKTUÁLNÍM ROZSAHU FILTRU
     const isPaidInCurrentFilterPeriod = (payment) => {
@@ -1606,9 +1609,14 @@ function renderRecurringPaymentsManagement() {
         } else {
             // Platba není zaplacená v aktuálním období - jen informace o poslední úhradě
             const lastPaidInfo = r.lastPaidDate ? formatDate(r.lastPaidDate) : 'Nezaplaceno';
+            
+            // PŘIDÁNO: Tlačítko pro Rychlé Zaplacení i do Správy (pro pohodlí)
+            const payButton = `<button class="btn" style="background:var(--danger);" onclick="event.stopPropagation(); markRecurringPaymentAsPaid('${r.id}')"><i class="fa fa-check"></i> Zaplatit</button>`;
+
             buttonHtml = `
-                <div style="text-align:right; margin-top:10px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px;">
                     <span class="muted" style="margin-right:10px;">Poslední úhrada: ${lastPaidInfo}</span>
+                    ${payButton}
                 </div>
             `;
             item.style.borderLeftColor = '#ff9900'; // Oranžová, že je k úhradě
@@ -1628,6 +1636,7 @@ function renderRecurringPaymentsManagement() {
     });
 }
 
+// NOVÁ FUNKCE: Znovu Zapnout (nastaví lastPaidDate na null)
 function reactivateRecurringPayment(id) {
     const payment = store.recurringPayments.find(r => r.id === id);
     if (!payment) return;
@@ -1724,6 +1733,7 @@ function renderRecurringPaymentsGoalSection() {
         const item = document.createElement('div');
         item.className = 'goal-item card recurring-payment-card';
         item.style.marginBottom = '10px';
+        item.style.borderLeftColor = '#ff9900'; // Vždy oranžová, protože je k úhradě
         
         item.innerHTML = `
             <div style="display:flex;justify-content:space-between;align-items:center;">
@@ -1742,6 +1752,7 @@ function renderRecurringPaymentsGoalSection() {
     });
 }
 
+// NOVÁ FUNKCE: Označení platby jako uhrazené (vytvoří transakci)
 function markRecurringPaymentAsPaid(id) {
     const payment = store.recurringPayments.find(r => r.id === id);
     if (!payment) return;
@@ -1776,41 +1787,42 @@ function markRecurringPaymentAsPaid(id) {
 }
 
 
-// ZÍSKÁNÍ NEUHRAZENÝCH PLATEB V RÁMCI AKTUÁLNÍHO FILTRU
+// NOVÁ FUNKCE: ZÍSKÁNÍ NEUHRAZENÝCH PLATEB V RÁMCI AKTUÁLNÍHO FILTRU
 function getUpcomingPayments(filterFrom, filterTo) {
     if (!filterFrom || !filterTo) return [];
     
     const fDate = new Date(filterFrom);
     const tDate = new Date(filterTo);
     // Nastavíme konec filtru na konec dne pro přesné porovnání
-    let filterToDate = tDate;
-    filterToDate.setHours(23, 59, 59, 999); 
+    let filterToDate = new Date(tDate);
+    filterToDate.setDate(filterToDate.getDate() + 1); 
+    filterToDate.setSeconds(filterToDate.getSeconds() - 1); 
+
+    // Jednoduchá kontrola: Platba je "upcoming" pokud:
+    // 1. Její lastPaidDate NENÍ v aktuálním filtračním období.
+    // 2. A zároveň teoretický den splatnosti (např. 15. v daném měsíci filtru) spadá do rozsahu filtru.
+    
+    // Pro zjednodušení použijeme pouze kontrolu, zda byla uhrazena v daném filtru.
+    // Tím se zajistí, že se nezobrazí po zaplacení, dokud se nezmění filtr.
 
     return store.recurringPayments.filter(r => {
         const lastPaidDate = r.lastPaidDate ? new Date(r.lastPaidDate) : null;
         
-        // Zjištění splatnosti v rámci období - ZDE JE KLÍČOVÝ PŘEDPOKLAD
-        // Předpokládáme, že splatnost se zvažuje v rámci období, aby se zabránilo vícenásobným úhradám za jedno období.
-        // Konkrétně: Platba je splatná, pokud poslední úhrada NENÍ v rámci filtračního období.
-        
-        // Vytvoření data splatnosti pro MĚSÍC ZAČÁTKU FILTRU (jednoduchý, ale robustní způsob kontroly)
-        const filterMonthStart = new Date(fDate.getFullYear(), fDate.getMonth(), r.dueDate);
-        
-        // Zkontrolujeme, zda datum splatnosti spadá do rozsahu filtru (jednoduchá kontrola)
-        const isDueInFilterPeriod = filterMonthStart >= fDate && filterMonthStart <= filterToDate;
+        // Zkontrolovat, zda poslední úhrada NENÍ v rozsahu filtru
+        const isPaidInCurrentFilter = lastPaidDate && lastPaidDate >= fDate && lastPaidDate <= filterToDate;
 
-        if (isDueInFilterPeriod) {
-            // Je splatná v tomto období filtru
-            if (lastPaidDate) {
-                // Kontrola, zda poslední úhrada spadá do AKTIVNÍHO FILTRAČNÍHO ROZSAHU
-                if (lastPaidDate >= fDate && lastPaidDate <= filterToDate) {
-                    return false; // Již zaplaceno pro toto období filtru
-                }
-            }
-            return true; // Je splatná a neuhrazená v rámci filtru
+        if (isPaidInCurrentFilter) {
+            return false; // Již zaplaceno pro toto období filtru
         }
         
-        return false; // Nespadá do období, nebo je uhrazená z předchozího filtru.
+        // Dále bychom měli zkontrolovat, zda by platba MĚLA být zaplacena v tomto období.
+        // Zde je malý hack: Zjišťujeme jen, zda je v aktuálním filtru.
+        // Tzn. pokud změníte filtr na minulé 3 měsíce a platba nebyla za 3 měsíce zaplacena, zobrazí se.
+        // Pro správnou simulaci, zda je splatná, je potřeba pokročilejší logika (např. poslední den v měsíci)
+        
+        // Pro jednoduchost implementace: Zobrazujeme, pokud NENÍ uhrazena V TOMTO období.
+        
+        return true; 
     });
 }
 
