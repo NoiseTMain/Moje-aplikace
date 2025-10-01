@@ -1,224 +1,1128 @@
 <!DOCTYPE html>
 <html lang="cs">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Mobilní Galerie</title>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@9/swiper-bundle.min.css" />
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+<title>Finanční Plánovač - Rozpočet a Investice</title>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
 <style>
-/* Reset a základní styly */
-* { box-sizing: border-box; margin:0; padding:0; }
+  :root{
+    --bg: #f6f7fb;
+    --card: #ffffff;
+    --muted: #6b7280;
+    --accent: #008080; /* Teal - Hlavní akcent */
+    --accent2: #32cd32; /* Lime Green - Vedlejší akcent (pro příjmy/zisky) */
+    --glass: rgba(255,255,255,0.6);
+    --border: rgba(0,0,0,0.06);
+    --text: #0f1724;
+    --danger: #ef4444; /* Pro výdaje/ztráty */
+  }
+  [data-theme='dark']{
+    --bg: #05060a;
+    --card: rgba(20,25,30,0.6);
+    --muted: #bfc8d2;
+    --accent: #004d4d;
+    --accent2: #1e8449;
+    --glass: rgba(255,255,255,0.02);
+    --border: rgba(255,255,255,0.06);
+    --text: #fdf6e3;
+    --danger: #922b2b;
+  }
 
-body { font-family:-apple-system, BlinkMacSystemFont,"Segoe UI", Roboto, sans-serif; background-color:#f2f2f7; color:#000; }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{ height:100%; overflow-x: hidden; }
+  body{
+    font-family:Inter, "Segoe UI", Tahoma, sans-serif;
+    background: linear-gradient(180deg,var(--bg), #eef2ff);
+    color: var(--text);
+    padding-bottom:40px;
+    transition:all .25s;
+    position:relative;
+    overflow-x:hidden;
+    touch-action: pan-y;
+  }
+  [data-theme='dark'] body{ background: radial-gradient(circle at 10% 10%, #071028 0%, #04050a 60%); }
 
-header { display:flex; justify-content:space-between; align-items:center; padding:15px; background-color:#fff; box-shadow:0 1px 5px rgba(0,0,0,0.1); }
+  #starfield {
+    position: fixed; left: 0; top: 0; width: 100%; height: 100%;
+    pointer-events: none; z-index: 0; opacity: 0; transition: opacity 0.4s ease;
+  }
+  [data-theme='dark'] #starfield { opacity: 1; }
 
-header h1 { font-size:20px; font-weight:600; }
+  header{
+    position: relative; z-index: 5;
+    background: linear-gradient(90deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+    padding:20px 18px; display:flex; gap:12px; align-items:center; justify-content:space-between;
+    border-bottom:14px solid rgba(230,230,230,0.9);
+    border-image: url('https://www.transparenttextures.com/patterns/marble.png') 30 repeat;
+    color: var(--text);
+  }
+  .title{ display:flex; flex-direction:column; z-index:5; }
+  .title h1{ font-size:20px; margin-bottom:4px; }
+  .title .sub{ font-size:12px; color:var(--muted) }
 
-button { padding:10px 15px; border:none; border-radius:12px; background-color:#007aff; color:#fff; font-size:16px; cursor:pointer; }
+  .wrap{max-width:1100px;margin:16px auto;padding:0 18px; position:relative; z-index:5}
+  .topbar{display:flex;gap:12px;align-items:center;justify-content:space-between;margin-bottom:12px}
+  .controls{display:flex;gap:8px;align-items:center}
 
-button:hover { background-color:#005bb5; }
+  .card{
+    background:var(--card); border-radius:12px; padding:18px;
+    box-shadow: 0 8px 30px rgba(15,23,42,0.06); border:1px solid var(--border);
+    transition:transform .18s ease, box-shadow .18s ease, background .25s;
+    backdrop-filter: blur(6px);
+  }
+  .card + .card{ margin-top:14px }
+  .card:hover{ transform: translateY(-4px); box-shadow:0 18px 40px rgba(2,6,23,0.08) }
 
-#albums { padding:10px; }
+  .nav{ display:flex; gap:8px; background:transparent; padding:6px; border-radius:10px; }
+  .nav button{ background:transparent; border:1px solid var(--border); padding:8px 12px; border-radius:8px; cursor:pointer; color:var(--muted); font-weight:700; }
+  .nav button.active{ background:linear-gradient(90deg,var(--accent),#00a0a0); color:#fff; border-color:transparent; }
 
-.album { background-color:#fff; padding:15px; margin-bottom:10px; border-radius:16px; display:flex; justify-content:space-between; align-items:center; cursor:pointer; box-shadow:0 2px 5px rgba(0,0,0,0.1); }
+  .form-row{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:8px; }
+  input[type=text], input[type=date], input[type=number], select, textarea{
+    padding:10px 12px; border-radius:8px; border:1px solid var(--border); min-width:150px; background:transparent; color:var(--text);
+  }
+  .btn{ display:inline-flex; gap:8px; align-items:center; padding:10px 14px; border-radius:10px; border:none; background:var(--accent); color:#fff; cursor:pointer; font-weight:700; }
+  .btn.secondary{ background:transparent; color:var(--muted); border:1px solid var(--border); font-weight:700; }
+  .btn.danger{ background:var(--danger); color:#fff; }
+  .btn.income{ background:var(--accent2); color:#fff; }
 
-#fileInput { display:none; }
+  .table-wrap{ overflow:auto; margin-top:8px }
+  table.main, table.settings{ width:100%; border-collapse:collapse; min-width:720px; background:var(--card); border-radius:8px; overflow:hidden; }
+  table.main thead th, table.settings thead th{ text-align:left; padding:12px; background:var(--accent); color:#fff; font-weight:800; font-size:0.95em; }
+  table.main tbody td, table.settings tbody td{ padding:12px; border-bottom:1px dashed rgba(0,0,0,0.06); vertical-align:middle; color:var(--text) }
+  table.main tr:hover td, table.settings tr:hover td{ background:linear-gradient(90deg, rgba(0,0,0,0.02), transparent); }
+  .badge{ display:inline-block; padding:6px 8px; border-radius:8px; color:#fff; font-weight:700; }
+  .badge.danger{ background:var(--danger); }
+  .badge.income{ background:var(--accent2); }
+  .badge.info{ background:linear-gradient(90deg,#60a5fa,#93c5fd); } /* Pro Investiční cíl */
 
-.swiper { width:100%; height:80vh; background-color:#000; display:none; }
+  .muted{ color:var(--muted); font-size:0.88em; }
+  .stat-list{ display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:10px; margin-top:10px; }
+  .stat-card{ padding:12px; border-radius:10px; background:linear-gradient(180deg, rgba(255,255,255,0.6), transparent); border:1px solid var(--border) }
+  .stat-card .value{ font-size:1.5em; font-weight:800; margin-top:4px; }
+  .stat-card.income{ border-left:4px solid var(--accent2); }
+  .stat-card.expense{ border-left:4px solid var(--danger); }
+  .stat-card.balance{ border-left:4px solid var(--accent); }
 
-.swiper-slide { display:flex; justify-content:center; align-items:center; }
+  /* NOVÉ: Cíl - progress bar */
+  .goal-item{ display:flex; justify-content:space-between; align-items:center; gap:15px; padding:12px; 
+    border-radius:10px; border:1px solid var(--border); background:linear-gradient(180deg,var(--card),transparent); 
+    cursor:pointer; transition:background .18s; margin-top:8px;
+  }
+  .goal-item:hover{ background:linear-gradient(180deg, rgba(255,255,255,0.8), transparent); }
+  [data-theme='dark'] .goal-item:hover{ background:linear-gradient(180deg, rgba(255,255,255,0.05), transparent); }
+  .progress-bar{ width:100%; background:#e0e0e0; border-radius:4px; margin-top:6px; }
+  .progress-fill{ height:12px; background:var(--accent2); border-radius:4px; transition:width 0.4s ease-in-out; }
 
-.swiper-slide img, .swiper-slide video { max-width:100%; max-height:100%; border-radius:12px; }
+  /* MODAL */
+  .modal-overlay{
+    position:fixed; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:1000;
+    display:none; align-items:center; justify-content:center;
+  }
+  .modal-content{
+    background:var(--card); border-radius:12px; padding:24px; max-width:500px; width:90%;
+    box-shadow:0 24px 48px rgba(0,0,0,0.3); position:relative;
+  }
+  .modal-close{ position:absolute; top:10px; right:10px; background:transparent; border:0; font-size:24px; cursor:pointer; color:var(--muted); }
+  .modal-header{ margin-bottom:15px; border-bottom:1px solid var(--border); padding-bottom:10px; display:flex; align-items:center; }
+  .modal-body > div{ margin-bottom:15px; }
+  .modal-body label{ display:block; margin-bottom:5px; font-weight:700; color:var(--text); }
+  .modal-footer{ margin-top:20px; text-align:right; display:flex; justify-content:space-between; }
+  .modal-footer button{ margin-left:8px; }
 
-/* Heslo overlay */
-#passwordOverlay {
-    position:fixed;
-    top:0; left:0; width:100%; height:100%;
-    background-color:rgba(0,0,0,0.95);
-    display:flex;
-    justify-content:center;
-    align-items:center;
-    flex-direction:column;
-    z-index:2000;
-}
-
-#passwordOverlay input {
-    padding:15px;
-    font-size:20px;
-    border-radius:12px;
-    border:none;
-    margin-bottom:15px;
-}
-
-#passwordOverlay button {
-    font-size:20px;
-    padding:12px 25px;
-}
-
+  @media(max-width:820px){
+    .topbar{ flex-direction:column; gap:8px; align-items:stretch }
+    .form-row{ flex-direction:column; align-items:stretch }
+    table.main, table.settings{ min-width:600px }
+  }
 </style>
 </head>
-<body>
+<body data-theme="light">
 
-<!-- Heslo overlay -->
-<div id="passwordOverlay">
-    <h2 style="color:white; margin-bottom:20px;">Zadejte heslo</h2>
-    <input type="password" id="passwordInput" placeholder="Heslo">
-    <button id="passwordBtn">Odeslat</button>
-    <div id="passwordMessage" style="color:red; margin-top:10px;"></div>
-</div>
+<canvas id="starfield"></canvas>
 
 <header>
-    <h1>Moje Galerie</h1>
-    <button id="addFileBtn">+ Přidat</button>
+  <div style="display:flex;align-items:center;gap:12px;justify-content:space-between;width:100%">
+    <div class="title">
+      <h1><i class="fa fa-chart-line" style="color:var(--accent)"></i> Finanční Plánovač</h1>
+      <div class="sub muted">Rozpočet, Investice a Přehled</div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <div id="todayShort" class="muted"></div>
+      <button class="btn secondary" onclick="toggleTheme()" id="themeBtn"><i class="fa fa-moon"></i> Přepnout motiv</button>
+    </div>
+  </div>
 </header>
 
-<div id="albums"></div>
-<input type="file" id="fileInput" accept="image/*,video/*" multiple>
+<main class="wrap">
 
-<div class="swiper" id="swiperContainer">
-    <div class="swiper-wrapper" id="swiperWrapper"></div>
+  <div class="topbar">
+    <div class="nav card" role="navigation" aria-label="Sekce">
+      <button class="active" data-section="budget" onclick="showSection(event)"><i class="fa fa-wallet"></i> Rozpočet</button>
+      <button data-section="goals" onclick="showSection(event)"><i class="fa fa-bullseye"></i> Investiční cíle</button>
+      <button data-section="stats" onclick="showSection(event)"><i class="fa fa-chart-pie"></i> Přehled</button>
+      <button data-section="settings" onclick="showSection(event)"><i class="fa fa-cogs"></i> Správa dat</button>
+    </div>
+
+    <div style="display:flex;gap:8px;align-items:center">
+      <div class="card" style="display:flex;gap:8px;align-items:center">
+        <div class="muted">Filtr - Od</div>
+        <input type="date" id="filterFrom" />
+        <div class="muted">Do</div>
+        <input type="date" id="filterTo" />
+        <button class="btn secondary" onclick="applyFilter()"><i class="fa fa-search"></i> Aplikovat</button>
+      </div>
+    </div>
+  </div>
+
+  <section id="section-budget">
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+        <div>
+          <h2><i class="fa fa-plus-circle" style="color:var(--accent2)"></i> Záznam příjmu / výdaje</h2>
+          <div class="muted">Zadejte detail transakce.</div>
+        </div>
+      </div>
+
+      <div class="form-row" style="margin-top:14px">
+        <input type="date" id="transactionDate" />
+        <input type="text" id="transactionDesc" placeholder="Popis (např. 'Výplata' nebo 'Nájem')"/>
+        <input type="number" id="transactionAmount" placeholder="Částka (Kč)"/>
+        <select id="transactionType">
+          <option value="expense">Výdaj</option>
+          <option value="income">Příjem</option>
+        </select>
+        <button class="btn" id="addTransactionBtn" onclick="addTransaction()"><i class="fa fa-plus-square"></i> Přidat transakci</button>
+      </div>
+    </div>
+
+    <div class="card" id="transactionCard">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <h3 class="muted"><i class="fa fa-table"></i> Historie transakcí</h3>
+          <div class="muted">Transakce s celkovou bilancí pro filtrované období.</div>
+        </div>
+        <div class="muted">Celková bilance: <span id="totalBalance" style="font-weight:700">0 Kč</span></div>
+      </div>
+
+      <div class="table-wrap">
+        <table class="main" id="mainTable">
+          <thead>
+            <tr><th>Datum</th><th>Popis</th><th>Typ</th><th>Částka (Kč)</th><th>Akce</th></tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+
+      <div class="exports" style="justify-content:space-between">
+        <div style="display:flex;gap:8px">
+          <button class="btn" onclick="exportCSV()"><i class="fa fa-file-csv"></i> Export CSV</button>
+        </div>
+
+        <div style="display:flex;gap:8px;align-items:center">
+          <div class="muted">Řadit podle:</div>
+          <select id="sortSelect" onchange="applySort()">
+            <option value="date_desc">Datum (nejnovější)</option>
+            <option value="date_asc">Datum (nejstarší)</option>
+            <option value="amount_desc">Částka (největší)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="section-goals" style="display:none">
+    <div class="card">
+      <h2><i class="fa fa-hand-holding-usd"></i> Investiční a Spořicí Cíle</h2>
+      <div class="muted">Zde můžete sledovat, kolik jste naspořili na jednotlivé cíle.</div>
+      <div style="margin-top:12px">
+        <div class="form-row">
+            <input type="text" id="newGoalName" placeholder="Název cíle (např. 'Auto')" style="flex-grow:1"/>
+            <input type="number" id="newGoalTarget" placeholder="Cílová částka (Kč)" style="flex-grow:1"/>
+            <input type="number" id="newGoalSaved" placeholder="Aktuálně naspořeno (Kč)" style="flex-grow:1"/>
+            <button class="btn" onclick="addGoal()"><i class="fa fa-plus-circle"></i> Přidat cíl</button>
+        </div>
+        <div id="goalsList" style="margin-top:10px"></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="section-stats" style="display:none">
+    <div class="card">
+      <h2><i class="fa fa-pie-chart"></i> Finanční Přehled</h2>
+      <div class="muted">Statistiky a souhrn pro aktuální období filtru (výše).</div>
+
+      <div class="stat-list" id="statCards">
+        <div class="stat-card balance">
+            <div class="muted">Zůstatek (Příjmy - Výdaje)</div>
+            <div class="value" id="statBalance">0 Kč</div>
+        </div>
+        <div class="stat-card income">
+            <div class="muted">Celkové Příjmy</div>
+            <div class="value" id="statIncome">0 Kč</div>
+        </div>
+        <div class="stat-card expense">
+            <div class="muted">Celkové Výdaje</div>
+            <div class="value" id="statExpense">0 Kč</div>
+        </div>
+      </div>
+      
+      <h3 style="margin-top:20px"><i class="fa fa-tags"></i> Analýza kategorií</h3>
+      <p class="muted">Kolik peněz šlo na jednotlivé kategorie (pro filtrované období).</p>
+      
+      <div id="categoryStats" class="stat-list" style="margin-top:12px">
+          </div>
+    </div>
+  </section>
+
+  <section id="section-settings" style="display:none">
+    <div class="card">
+      <h2><i class="fa fa-wrench"></i> Nastavení kategorií</h2>
+      <p class="muted">Zadejte vlastní kategorie pro lepší přehled. Klikněte pro úpravu.</p>
+      
+      <div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;border:1px solid var(--border);padding:10px;border-radius:8px;background:var(--glass)">
+        <select id="categoryType">
+          <option value="expense">Výdajová</option>
+          <option value="income">Příjmová</option>
+        </select>
+        <input type="text" id="newCategoryName" placeholder="Nová kategorie (např. 'Jídlo')" style="flex-grow:1"/>
+        <button class="btn" onclick="addCategory()"><i class="fa fa-plus"></i> Přidat kategorii</button>
+      </div>
+
+      <div id="categoryList" style="margin-top:15px; display:flex; gap:8px; flex-wrap:wrap;">
+        </div>
+
+    </div>
+
+    <div class="card">
+      <h2><i class="fa fa-database"></i> Správa dat</h2>
+      <p class="muted">Data se ukládají do prohlížeče (localStorage). Export, Import a Smazání.</p>
+
+      <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn" onclick="exportAllJSON()"><i class="fa fa-download"></i> Exportovat data (JSON)</button>
+        
+        <input type="file" id="importJsonFile" accept=".json" style="display:none;" onchange="importAllJSON(event)">
+        <button class="btn secondary" onclick="document.getElementById('importJsonFile').click()"><i class="fa fa-upload"></i> Nahrát JSON data</button>
+        <button class="btn danger" onclick="clearAll()"><i class="fa fa-trash"></i> Vymazat data</button>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<div id="transactionModal" class="modal-overlay">
+  <div class="modal-content">
+    <button class="modal-close" onclick="closeModal('transactionModal')"><i class="fa fa-times"></i></button>
+    <div class="modal-header">
+      <h3 id="modalTransactionTitle"><i class="fa fa-edit"></i> Úprava transakce</h3>
+    </div>
+
+    <div class="modal-body">
+      <div>
+        <label for="modalTDate">Datum:</label>
+        <input type="date" id="modalTDate" style="width:100%"/>
+      </div>
+      <div>
+        <label for="modalTDesc">Popis:</label>
+        <input type="text" id="modalTDesc" style="width:100%"/>
+      </div>
+      <div>
+        <label for="modalTAmount">Částka (Kč):</label>
+        <input type="number" id="modalTAmount" style="width:100%"/>
+      </div>
+      <div>
+        <label for="modalTType">Typ:</label>
+        <select id="modalTType" style="width:100%">
+          <option value="expense">Výdaj</option>
+          <option value="income">Příjem</option>
+        </select>
+      </div>
+      <div>
+        <label for="modalTCategory">Kategorie:</label>
+        <select id="modalTCategory" style="width:100%">
+          </select>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn danger" id="modalDeleteBtn"><i class="fa fa-trash"></i> Smazat transakci</button>
+      <button class="btn" onclick="saveTransactionProfile()"><i class="fa fa-save"></i> Uložit</button>
+    </div>
+  </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/swiper@9/swiper-bundle.min.js"></script>
-<script>
-// ====== HESLO ======
-const passwordOverlay = document.getElementById('passwordOverlay');
-const passwordInput = document.getElementById('passwordInput');
-const passwordBtn = document.getElementById('passwordBtn');
-const passwordMessage = document.getElementById('passwordMessage');
+<div id="goalModal" class="modal-overlay">
+    <div class="modal-content">
+      <button class="modal-close" onclick="closeModal('goalModal')"><i class="fa fa-times"></i></button>
+      <div class="modal-header">
+        <h3 id="modalGoalTitle"><i class="fa fa-bullseye"></i> Úprava cíle</h3>
+      </div>
+  
+      <div class="modal-body">
+        <div>
+            <label for="modalGoalName">Název cíle:</label>
+            <input type="text" id="modalGoalName" style="width:100%"/>
+        </div>
+        <div>
+            <label for="modalGoalTarget">Cílová částka (Kč):</label>
+            <input type="number" id="modalGoalTarget" style="width:100%"/>
+        </div>
+        <div>
+            <label for="modalGoalSaved">Aktuálně naspořeno (Kč):</label>
+            <input type="number" id="modalGoalSaved" style="width:100%"/>
+        </div>
+      </div>
+  
+      <div class="modal-footer">
+        <button class="btn danger" id="modalGoalDeleteBtn"><i class="fa fa-trash"></i> Smazat cíl</button>
+        <button class="btn" onclick="saveGoalProfile()"><i class="fa fa-save"></i> Uložit změny</button>
+      </div>
+    </div>
+</div>
 
-passwordBtn.addEventListener('click', () => {
-    if(passwordInput.value === '777') {
-        passwordOverlay.style.display = 'none';
-        initDB();
+
+<script>
+/* =========================
+   Storage & data model
+   ========================= */
+const LS_TRANSACTIONS = 'finance_transactions_v1';
+const LS_GOALS = 'finance_goals_v1';
+const LS_CATEGORIES = 'finance_categories_v1'; 
+
+let store = {
+  transactions: [], // [{id: 1, date: 'YYYY-MM-DD', desc: 'Popis', amount: 1000, type: 'income'|'expense', category: 'Kategorie'}]
+  goals: [],        // [{id: 1, name: 'Auto', target: 500000, saved: 100000}]
+  categories: [
+    { name: 'Nezadáno', type: 'expense' },
+    { name: 'Jídlo', type: 'expense' },
+    { name: 'Nájem/Bydlení', type: 'expense' },
+    { name: 'Volný čas', type: 'expense' },
+    { name: 'Investice', type: 'expense' },
+    { name: 'Výplata', type: 'income' },
+    { name: 'Bonus', type: 'income' },
+  ],
+};
+
+function loadStore(){
+  try{
+    const rawT = localStorage.getItem(LS_TRANSACTIONS);
+    if(rawT) store.transactions = JSON.parse(rawT).map(t => ({
+      ...t, 
+      id: t.id || Math.random().toString(36).substring(2, 9) // Zajistíme, že každá má ID
+    }));
+    else store.transactions = [];
+
+    const rawG = localStorage.getItem(LS_GOALS);
+    if(rawG) store.goals = JSON.parse(rawG).map(g => ({
+        ...g, 
+        id: g.id || Math.random().toString(36).substring(2, 9)
+    }));
+    else store.goals = [];
+
+    const rawC = localStorage.getItem(LS_CATEGORIES);
+    if(rawC) store.categories = JSON.parse(rawC);
+    // Doplňujeme výchozí kategorie, pokud chybí
+    if(!store.categories.some(c => c.name === 'Nezadáno')) {
+        store.categories.unshift({ name: 'Nezadáno', type: 'expense' });
+    }
+
+  }catch(e){
+    console.warn('Load error',e);
+    store.transactions = [];
+    store.goals = [];
+  }
+}
+function saveStore(){
+  localStorage.setItem(LS_TRANSACTIONS, JSON.stringify(store.transactions));
+  localStorage.setItem(LS_GOALS, JSON.stringify(store.goals));
+  localStorage.setItem(LS_CATEGORIES, JSON.stringify(store.categories));
+}
+
+/* helpers */
+function $(id){return document.getElementById(id)}
+function formatDate(d){ 
+    if(!d) return '';
+    const dt = new Date(d); 
+    if(isNaN(dt.getTime())) { return d; }
+    return dt.toLocaleDateString('cs-CZ'); 
+}
+function formatAmount(amount){
+    return new Intl.NumberFormat('cs-CZ', { style: 'currency', currency: 'CZK' }).format(amount);
+}
+function todayShort(){ const n = new Date(); $('todayShort').textContent = n.toLocaleDateString('cs-CZ'); }
+
+
+/* nav */
+function showSection(e){
+  const btn = e.currentTarget;
+  document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  const sec = btn.getAttribute('data-section');
+  document.querySelectorAll('main section').forEach(s => s.style.display = 'none');
+  $('section-'+sec).style.display = '';
+  
+  if(sec === 'stats') computeStats();
+}
+
+/* BUDGET - přidání transakce */
+function addTransaction(){
+    const date = $('transactionDate').value;
+    const desc = $('transactionDesc').value.trim();
+    const amount = parseFloat($('transactionAmount').value);
+    const type = $('transactionType').value;
+    
+    if(!date || !desc || isNaN(amount) || amount <= 0){
+        alert('Vyplňte prosím datum, popis a platnou kladnou částku.');
+        return;
+    }
+    
+    // Přidání výchozí kategorie (Nezadáno)
+    const category = store.categories.find(c => c.name === 'Nezadáno') ? 'Nezadáno' : (type === 'income' ? 'Výplata' : 'Jídlo');
+
+    const newTransaction = {
+        id: Math.random().toString(36).substring(2, 9),
+        date: date,
+        desc: desc,
+        amount: amount,
+        type: type,
+        category: category,
+    };
+
+    store.transactions.push(newTransaction);
+    saveStore();
+    
+    // Reset formuláře
+    $('transactionDesc').value = '';
+    $('transactionAmount').value = '';
+    
+    // Přegenerování tabulky
+    applyFilter();
+}
+
+/* BUDGET - render tabulky transakcí */
+let currentTransactions = [];
+function renderTransactionTable(transactions){
+    currentTransactions = transactions;
+    const tbody = $('tableBody');
+    tbody.innerHTML = '';
+    let totalBalance = 0;
+
+    transactions.forEach((t) => {
+        const tr = document.createElement('tr');
+        const isExpense = t.type === 'expense';
+        const amountDisplay = formatAmount(t.amount * (isExpense ? -1 : 1));
+        
+        if(isExpense) totalBalance -= t.amount;
+        else totalBalance += t.amount;
+
+        const td1 = document.createElement('td'); td1.textContent = formatDate(t.date);
+        const td2 = document.createElement('td'); 
+        td2.innerHTML = `<strong>${t.desc}</strong><br><span class="muted">${t.category || 'Nezadáno'}</span>`;
+        
+        const td3 = document.createElement('td'); 
+        const badge = document.createElement('span');
+        badge.className = `badge ${isExpense ? 'danger' : 'income'}`;
+        badge.textContent = isExpense ? 'Výdaj' : 'Příjem';
+        td3.appendChild(badge);
+        
+        const td4 = document.createElement('td'); td4.textContent = amountDisplay;
+        td4.style.color = isExpense ? 'var(--danger)' : 'var(--accent2)';
+        td4.style.fontWeight = '700';
+
+        const td5 = document.createElement('td');
+        const editBtn = document.createElement('button');
+        editBtn.className = 'btn secondary action-small';
+        editBtn.innerHTML = '<i class="fa fa-edit"></i> Upravit';
+        editBtn.onclick = () => openTransactionModal(t.id);
+        td5.appendChild(editBtn);
+
+        tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3); tr.appendChild(td4); tr.appendChild(td5);
+        tbody.appendChild(tr);
+    });
+    
+    // Aktualizace celkové bilance v záhlaví
+    const balanceEl = $('totalBalance');
+    balanceEl.textContent = formatAmount(totalBalance);
+    balanceEl.style.color = totalBalance >= 0 ? 'var(--accent2)' : 'var(--danger)';
+}
+
+/* BUDGET - transakční modal */
+let currentTransaction = null;
+
+function openTransactionModal(id){
+    currentTransaction = store.transactions.find(t => t.id === id);
+    if(!currentTransaction) return;
+    
+    $('modalTransactionTitle').innerHTML = `<i class="fa fa-edit"></i> Úprava transakce: ${currentTransaction.desc}`;
+    
+    // Načtení kategorií
+    const categorySelect = $('modalTCategory');
+    categorySelect.innerHTML = '';
+    const relevantCategories = store.categories.filter(c => c.type === currentTransaction.type);
+    
+    if(relevantCategories.length === 0){
+        // Přidáme alespoň default pro záchranu
+        categorySelect.innerHTML = `<option value="Nezadáno">Nezadáno</option>`;
     } else {
-        passwordMessage.textContent = 'Špatné heslo!';
+        relevantCategories.forEach(c => {
+            const opt = document.createElement('option');
+            opt.value = c.name;
+            opt.textContent = c.name;
+            categorySelect.appendChild(opt);
+        });
+    }
+
+    $('modalTDate').value = currentTransaction.date;
+    $('modalTDesc').value = currentTransaction.desc;
+    $('modalTAmount').value = currentTransaction.amount;
+    $('modalTType').value = currentTransaction.type;
+    $('modalTCategory').value = currentTransaction.category || 'Nezadáno';
+    
+    // Změna typu v modálu by měla přepnout kategorie
+    $('modalTType').onchange = () => {
+        currentTransaction.type = $('modalTType').value; // Dočasně aktualizujeme typ pro filtrování kategorií
+        openTransactionModal(id); // Znovu otevřeme modal, aby se kategorie načetly
+    }
+
+    $('modalDeleteBtn').onclick = () => deleteTransaction(currentTransaction.id);
+    
+    $('transactionModal').style.display = 'flex';
+}
+
+function saveTransactionProfile(){
+    if(!currentTransaction) return;
+    
+    const newType = $('modalTType').value;
+    
+    // Kontrola, zda se změnil typ a zda nová kategorie odpovídá typu
+    if(newType !== currentTransaction.type){
+        // Pokud se změnil typ, musíme zkontrolovat, zda nová kategorie je relevantní
+        const newCategory = $('modalTCategory').value;
+        const categoryValid = store.categories.find(c => c.name === newCategory && c.type === newType);
+        if(!categoryValid && newCategory !== 'Nezadáno'){
+            alert('Vybraná kategorie neodpovídá novému typu transakce. Vyberte prosím platnou kategorii.');
+            return;
+        }
+        currentTransaction.category = newCategory;
+    } else {
+        currentTransaction.category = $('modalTCategory').value;
+    }
+
+    currentTransaction.date = $('modalTDate').value;
+    currentTransaction.desc = $('modalTDesc').value.trim();
+    currentTransaction.amount = parseFloat($('modalTAmount').value);
+    currentTransaction.type = newType;
+
+
+    if(!currentTransaction.date || !currentTransaction.desc || isNaN(currentTransaction.amount) || currentTransaction.amount <= 0){
+        alert('Vyplňte prosím datum, popis a platnou kladnou částku.');
+        return;
+    }
+    
+    saveStore();
+    closeModal('transactionModal');
+    applyFilter();
+    computeStats();
+}
+
+function deleteTransaction(id){
+    if(!confirm('Opravdu smazat tuto transakci?')) return;
+    store.transactions = store.transactions.filter(t => t.id !== id);
+    saveStore();
+    closeModal('transactionModal');
+    applyFilter();
+    computeStats();
+}
+
+// Společná funkce pro zavírání modalů
+function closeModal(id){
+    $(id).style.display = 'none';
+    if(id === 'transactionModal') currentTransaction = null;
+    if(id === 'goalModal') currentGoal = null;
+    applyFilter(); // Aktualizace po uzavření modalu
+}
+
+/* BUDGET - filtrování a řazení */
+function applyFilter(){
+    const f = $('filterFrom').value ? new Date($('filterFrom').value) : new Date(0); // Od začátku času
+    const t = $('filterTo').value ? new Date($('filterTo').value) : new Date();
+    // Nastavíme konec dne pro datum 'Do'
+    if ($('filterTo').value) {
+        t.setDate(t.getDate() + 1);
+        t.setSeconds(t.getSeconds() - 1);
+    } else {
+        t.setDate(t.getDate()); // Dnes do půlnoci
+    }
+
+
+    let filtered = store.transactions.filter(t => {
+        const date = new Date(t.date);
+        return date >= f && date <= t;
+    });
+    
+    // Aplikace řazení
+    const sel = $('sortSelect').value;
+    if(sel==='date_desc'){ filtered.sort((a,b)=> new Date(b.date) - new Date(a.date)); }
+    if(sel==='date_asc'){ filtered.sort((a,b)=> new Date(a.date) - new Date(b.date)); }
+    if(sel==='amount_desc'){ filtered.sort((a,b)=> b.amount - a.amount); }
+    
+    renderTransactionTable(filtered);
+    computeStats(); // Přepočítáme statistiky po každém filtrování
+}
+
+function applySort(){
+    applyFilter(); // Opětovně filtrujeme a renderujeme s novým řazením
+}
+
+/* GOALS - správa cílů */
+let currentGoal = null;
+
+function renderGoals(){
+    const listContainer = $('goalsList');
+    listContainer.innerHTML = '';
+    
+    if(store.goals.length === 0){
+        listContainer.innerHTML = '<p class="muted" style="text-align:center; margin-top:15px;">Zatím nemáte žádné investiční cíle.</p>';
+        return;
+    }
+
+    store.goals.sort((a,b) => (b.saved/b.target || 0) - (a.saved/a.target || 0)); // Řazení podle procenta splnění
+
+    store.goals.forEach((goal) => {
+        const item = document.createElement('div');
+        item.className = 'goal-item';
+        item.onclick = () => openGoalModal(goal.id); 
+        
+        const progress = Math.min(100, (goal.saved / goal.target) * 100);
+        
+        item.innerHTML = `
+            <div style="flex-grow:1">
+                <div class="title-text" style="font-weight:700">${goal.name} <span class="badge info" style="margin-left:8px;">Cíl: ${formatAmount(goal.target)}</span></div>
+                <div class="dates muted">Naspořeno: ${formatAmount(goal.saved)} (${progress.toFixed(1)}%)</div>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: ${progress}%"></div>
+                </div>
+            </div>
+        `;
+        listContainer.appendChild(item);
+    });
+}
+
+function addGoal(){
+    const name = $('newGoalName').value.trim();
+    const target = parseFloat($('newGoalTarget').value);
+    const saved = parseFloat($('newGoalSaved').value) || 0;
+
+    if(!name || isNaN(target) || target <= 0){
+        alert('Vyplňte prosím název cíle a platnou cílovou částku.');
+        return;
+    }
+
+    const newGoal = {
+        id: Math.random().toString(36).substring(2, 9),
+        name,
+        target,
+        saved,
+    };
+
+    store.goals.push(newGoal);
+    saveStore();
+    
+    $('newGoalName').value = '';
+    $('newGoalTarget').value = '';
+    $('newGoalSaved').value = '';
+    
+    renderGoals();
+}
+
+function openGoalModal(id){
+    currentGoal = store.goals.find(g => g.id === id);
+    if(!currentGoal) return;
+
+    $('modalGoalTitle').innerHTML = `<i class="fa fa-bullseye"></i> Úprava cíle: ${currentGoal.name}`;
+    
+    $('modalGoalName').value = currentGoal.name;
+    $('modalGoalTarget').value = currentGoal.target;
+    $('modalGoalSaved').value = currentGoal.saved;
+
+    $('modalGoalDeleteBtn').onclick = () => deleteGoal(currentGoal.id);
+
+    $('goalModal').style.display = 'flex';
+}
+
+function saveGoalProfile(){
+    if(!currentGoal) return;
+
+    currentGoal.name = $('modalGoalName').value.trim();
+    currentGoal.target = parseFloat($('modalGoalTarget').value);
+    currentGoal.saved = parseFloat($('modalGoalSaved').value);
+
+    if(!currentGoal.name || isNaN(currentGoal.target) || currentGoal.target <= 0 || isNaN(currentGoal.saved) || currentGoal.saved < 0){
+        alert('Zkontrolujte prosím všechna pole cíle. Částky musí být kladné.');
+        return;
+    }
+
+    saveStore();
+    closeModal('goalModal');
+    renderGoals();
+}
+
+function deleteGoal(id){
+    if(!confirm('Opravdu smazat tento investiční cíl?')) return;
+    store.goals = store.goals.filter(g => g.id !== id);
+    saveStore();
+    closeModal('goalModal');
+    renderGoals();
+}
+
+
+/* STATS - přepočet a zobrazení přehledu */
+function computeStats(){
+    const f = $('filterFrom').value ? new Date($('filterFrom').value) : new Date(0);
+    const t = $('filterTo').value ? new Date($('filterTo').value) : new Date();
+    // Nastavíme konec dne pro datum 'Do'
+    if ($('filterTo').value) {
+        t.setDate(t.getDate() + 1);
+        t.setSeconds(t.getSeconds() - 1);
+    } else {
+        t.setDate(t.getDate()); 
+    }
+
+    let totalIncome = 0;
+    let totalExpense = 0;
+    const categoryTotals = {}; // { 'Kategorie': { amount: 1000, type: 'expense' } }
+
+    const filtered = store.transactions.filter(t => {
+        const date = new Date(t.date);
+        return date >= f && date <= t;
+    });
+
+    filtered.forEach(t => {
+        if(t.type === 'income'){
+            totalIncome += t.amount;
+        } else {
+            totalExpense += t.amount;
+        }
+        
+        const catName = t.category || 'Nezadáno';
+        if(!categoryTotals[catName]){
+            categoryTotals[catName] = { amount: 0, type: t.type };
+        }
+        categoryTotals[catName].amount += t.amount;
+    });
+
+    const totalBalance = totalIncome - totalExpense;
+
+    // 1. Souhrnné karty
+    $('statBalance').textContent = formatAmount(totalBalance);
+    $('statBalance').style.color = totalBalance >= 0 ? 'var(--accent2)' : 'var(--danger)';
+    $('statIncome').textContent = formatAmount(totalIncome);
+    $('statExpense').textContent = formatAmount(totalExpense);
+
+    // 2. Kategorie
+    const catCont = $('categoryStats'); catCont.innerHTML = '';
+    const sortedCats = Object.keys(categoryTotals).map(name => ({
+        name,
+        ...categoryTotals[name],
+    })).sort((a, b) => b.amount - a.amount);
+    
+    sortedCats.forEach(cat => {
+        const card = document.createElement('div'); 
+        card.className=`stat-card ${cat.type === 'income' ? 'income' : 'expense'}`;
+        const percentage = totalIncome > 0 && cat.type === 'income' 
+            ? ((cat.amount / totalIncome) * 100).toFixed(1)
+            : totalExpense > 0 && cat.type === 'expense'
+            ? ((cat.amount / totalExpense) * 100).toFixed(1)
+            : 0;
+
+        card.innerHTML = `
+            <div class="muted">${cat.name} (${cat.type === 'income' ? 'Příjem' : 'Výdaj'})</div>
+            <div class="value" style="color:${cat.type === 'income' ? 'var(--accent2)' : 'var(--danger)'}">${formatAmount(cat.amount)}</div>
+            <div class="muted" style="margin-top:4px; font-weight:700">${percentage}% celku</div>
+        `;
+        catCont.appendChild(card);
+    });
+}
+
+
+/* SETTINGS - kategorie */
+function renderCategories(){
+    const listCont = $('categoryList');
+    listCont.innerHTML = '';
+
+    store.categories.forEach(cat => {
+        const badge = document.createElement('span');
+        badge.className = `badge ${cat.type === 'income' ? 'income' : 'danger'}`;
+        badge.textContent = `${cat.name} (${cat.type === 'income' ? 'P' : 'V'})`;
+        badge.style.cursor = 'pointer';
+        badge.style.margin = '4px';
+
+        // Přidání tlačítka pro smazání (kromě "Nezadáno")
+        if(cat.name !== 'Nezadáno'){
+            const deleteBtn = document.createElement('i');
+            deleteBtn.className = 'fa fa-times-circle';
+            deleteBtn.style.marginLeft = '6px';
+            deleteBtn.style.cursor = 'pointer';
+            deleteBtn.onclick = (e) => { e.stopPropagation(); deleteCategory(cat.name); };
+            badge.appendChild(deleteBtn);
+        }
+        
+        listCont.appendChild(badge);
+    });
+}
+
+function addCategory(){
+    const name = $('newCategoryName').value.trim();
+    const type = $('categoryType').value;
+
+    if(!name){ alert('Zadejte název kategorie.'); return; }
+    if(store.categories.some(c => c.name.toLowerCase() === name.toLowerCase())){
+        alert('Kategorie s tímto názvem již existuje.'); return;
+    }
+
+    store.categories.push({ name, type });
+    saveStore();
+    $('newCategoryName').value = '';
+    renderCategories();
+}
+
+function deleteCategory(name){
+    if(!confirm(`Opravdu smazat kategorii "${name}"? Transakce v této kategorii budou nastaveny na "Nezadáno".`)) return;
+
+    store.categories = store.categories.filter(c => c.name !== name);
+    // Aktualizace transakcí - nastavení smazané kategorie na "Nezadáno"
+    store.transactions.forEach(t => {
+        if(t.category === name) t.category = 'Nezadáno';
+    });
+
+    saveStore();
+    renderCategories();
+    applyFilter();
+}
+
+
+/* SETTINGS - správa dat */
+function clearAll(){
+  if(!confirm('Opravdu vymazat VŠECHNA data (transakce, cíle, kategorie)? Tuto akci nelze vrátit.')) return;
+  localStorage.removeItem(LS_TRANSACTIONS); 
+  localStorage.removeItem(LS_GOALS); 
+  localStorage.removeItem(LS_CATEGORIES);
+  
+  // Reset store na výchozí stav
+  store = {
+    transactions: [], goals: [], 
+    categories: [
+        { name: 'Nezadáno', type: 'expense' },
+        { name: 'Jídlo', type: 'expense' },
+        { name: 'Nájem/Bydlení', type: 'expense' },
+        { name: 'Volný čas', type: 'expense' },
+        { name: 'Investice', type: 'expense' },
+        { name: 'Výplata', type: 'income' },
+        { name: 'Bonus', type: 'income' },
+    ],
+  };
+  redrawAll();
+  alert('Data byla úspěšně vymazána a resetována.');
+}
+function exportAllJSON(){
+  const dataToExport = {
+      transactions: store.transactions,
+      goals: store.goals,
+      categories: store.categories, 
+  };
+  const blob = new Blob([JSON.stringify(dataToExport,null,2)], {type:'application/json'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'finance_data.json'; a.click();
+}
+
+function importAllJSON(event){
+    const file = event.target.files[0];
+    if (!file) return;
+
+    if(!confirm('Opravdu nahrát data z JSON souboru? Stávající data budou PŘEPSÁNA.')) {
+        event.target.value = ''; 
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = function(e){
+        try{
+            const data = JSON.parse(e.target.result);
+            
+            if(Array.isArray(data.transactions) && Array.isArray(data.goals) && Array.isArray(data.categories)){
+                store.transactions = data.transactions;
+                store.goals = data.goals;
+                store.categories = data.categories;
+                saveStore();
+                redrawAll();
+                alert('Data byla úspěšně nahrána a uložena.');
+            } else {
+                alert('Chyba: JSON soubor neobsahuje potřebná data nebo má chybný formát.');
+            }
+        } catch(err){
+            alert('Chyba při zpracování JSON souboru: ' + err.message);
+        }
+        event.target.value = '';
+    };
+    reader.readAsText(file);
+}
+
+// Export do CSV
+function exportCSV() {
+    let csv = "Datum;Popis;Typ;Kategorie;Částka (Kč)\n";
+    currentTransactions.forEach(t => {
+        csv += `${formatDate(t.date)};"${t.desc}";${t.type === 'income' ? 'Příjem' : 'Výdaj'};"${t.category || 'Nezadáno'}";${t.amount.toFixed(2)}\n`;
+    });
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "transakce.csv";
+    a.click();
+}
+
+
+/* redraw / orchestrace */
+function redrawAll(){
+  loadStore();
+  todayShort();
+  
+  // Nastavení výchozích dat
+  const now = new Date();
+  const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
+  if(!$('filterFrom').value) $('filterFrom').value = lastMonth.toISOString().slice(0,10);
+  if(!$('filterTo').value) $('filterTo').value = now.toISOString().slice(0,10);
+  if(!$('transactionDate').value) $('transactionDate').value = now.toISOString().slice(0,10);
+
+  renderCategories(); // Vykreslení kategorií v Nastavení
+  renderGoals(); // Vykreslení cílů
+  applyFilter(); // Vykreslení tabulky transakcí a statistik
+}
+
+
+/* theme & starfield animation (zachováno z původního kódu) */
+let starfieldCtx = null;
+let stars = [];
+let starAnimId = null;
+
+const devicePixelRatio = window.devicePixelRatio || 1;
+
+function initStarfield(){
+  const c = document.getElementById('starfield');
+  if (!c) return; 
+  
+  c.width = window.innerWidth * devicePixelRatio;
+  c.height = window.innerHeight * devicePixelRatio;
+  c.style.width = window.innerWidth + 'px';
+  c.style.height = window.innerHeight + 'px';
+  starfieldCtx = c.getContext('2d');
+  starfieldCtx.scale(devicePixelRatio, devicePixelRatio);
+  
+  stars = [];
+  const count = Math.round(window.innerWidth / 12);
+  for(let i=0;i<count;i++){
+    stars.push({
+      x: Math.random() * window.innerWidth,
+      y: Math.random() * window.innerHeight,
+      r: Math.random() * 1.2 + 0.3,
+      vx: (Math.random()-0.5)*0.02,
+      vy: (Math.random()-0.5)*0.02,
+      twinkle: Math.random()*1.5
+    });
+  }
+}
+
+function animateStarfield(time){
+  if(!starfieldCtx) return;
+  starfieldCtx.clearRect(0,0,window.innerWidth,window.innerHeight);
+  starfieldCtx.globalCompositeOperation = 'lighter';
+  stars.forEach(s=>{
+    s.x += s.vx * (1 + Math.sin(time/1000 + s.twinkle));
+    s.y += s.vy * (1 + Math.cos(time/1100 + s.twinkle));
+    if(s.x < 0) s.x = window.innerWidth;
+    if(s.x > window.innerWidth) s.x = 0;
+    if(s.y < 0) s.y = window.innerHeight;
+    if(s.y > window.innerHeight) s.y = 0;
+    const g = starfieldCtx.createRadialGradient(s.x, s.y, 0, s.x, s.y, s.r*6);
+    g.addColorStop(0, 'rgba(255,255,255,0.95)');
+    g.addColorStop(0.2, 'rgba(255,255,255,0.6)');
+    g.addColorStop(1, 'rgba(255,255,255,0.0)');
+    starfieldCtx.fillStyle = g;
+    starfieldCtx.beginPath();
+    starfieldCtx.arc(s.x, s.y, s.r*3, 0, Math.PI*2);
+    starfieldCtx.fill();
+  });
+  starAnimId = requestAnimationFrame(animateStarfield);
+}
+function startStarfield(){ 
+    if(!starfieldCtx) initStarfield(); 
+    if(!starAnimId) starAnimId = requestAnimationFrame(animateStarfield); 
+}
+function stopStarfield(){ 
+    if(starAnimId){ 
+        cancelAnimationFrame(starAnimId); 
+        starAnimId = null; 
+        const c = document.getElementById('starfield'); 
+        if(c && starfieldCtx){ 
+            starfieldCtx.clearRect(0,0,c.width,c.height); 
+        } 
+    } 
+}
+
+function toggleTheme(){
+  const body = document.body;
+  const t = body.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+  body.setAttribute('data-theme', t);
+  updateThemeButton(t);
+  if(t === 'dark'){ 
+    startStarfield(); 
+  } else { 
+    stopStarfield(); 
+  }
+}
+
+function updateThemeButton(theme){
+    const btn = $('themeBtn');
+    if(!btn) return;
+    if(theme === 'dark'){
+        btn.innerHTML = '<i class="fa fa-sun"></i> Přepnout motiv';
+    } else {
+        btn.innerHTML = '<i class="fa fa-moon"></i> Přepnout motiv';
+    }
+}
+
+window.addEventListener('resize', ()=>{ 
+    if(document.body.getAttribute('data-theme')==='dark'){
+        initStarfield(); 
     }
 });
 
-// ====== INDEXEDDB ======
-let db;
-const fileInput = document.getElementById('fileInput');
-const addFileBtn = document.getElementById('addFileBtn');
-const albumsDiv = document.getElementById('albums');
-const swiperContainer = document.getElementById('swiperContainer');
-const swiperWrapper = document.getElementById('swiperWrapper');
-let swiper;
+window.addEventListener('mousemove',(e)=>{
+  if(!stars || stars.length===0 || document.body.getAttribute('data-theme') === 'light') return; 
+  const cx = e.clientX / window.innerWidth - 0.5;
+  const cy = e.clientY / window.innerHeight - 0.5;
+  stars.forEach((s,i)=>{
+    s.x += cx * 0.6 * (i%3===0 ? 0.6 : 0.2);
+    s.y += cy * 0.6 * (i%3===0 ? 0.6 : 0.2);
+  });
+});
 
-function initDB() {
-    const request = indexedDB.open("GalleryDB", 1);
-    request.onupgradeneeded = function(event) {
-        db = event.target.result;
-        const store = db.createObjectStore("albums", { keyPath: "name" });
-    };
-    request.onsuccess = function(event) {
-        db = event.target.result;
-        loadAlbums();
-    };
-    request.onerror = function(event) { console.error("DB error", event); }
-}
-
-// Přidání souborů
-function addFiles(files, albumName="Default") {
-    const transaction = db.transaction(["albums"], "readwrite");
-    const store = transaction.objectStore("albums");
-    const getRequest = store.get(albumName);
-    getRequest.onsuccess = function() {
-        let album = getRequest.result || { name: albumName, files: [] };
-        Array.from(files).forEach(file => {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                album.files.push({type:file.type, data:e.target.result});
-                store.put(album);
-                loadAlbums();
-            }
-            reader.readAsDataURL(file);
-        });
-    }
-}
-
-// Načtení složek
-function loadAlbums() {
-    albumsDiv.innerHTML = '';
-    const transaction = db.transaction(["albums"], "readonly");
-    const store = transaction.objectStore("albums");
-    const request = store.openCursor();
-    request.onsuccess = function(event) {
-        const cursor = event.target.result;
-        if(cursor) {
-            const albumDiv = document.createElement('div');
-            albumDiv.className = 'album';
-            albumDiv.textContent = cursor.key + " ("+cursor.value.files.length+" souborů)";
-            albumDiv.addEventListener('click', () => openAlbum(cursor.key));
-            
-            // Přidání tlačítka pro smazání složky
-            const delBtn = document.createElement('button');
-            delBtn.textContent = '🗑️';
-            delBtn.style.marginLeft = '10px';
-            delBtn.addEventListener('click', (e)=>{
-                e.stopPropagation();
-                const delTransaction = db.transaction(["albums"], "readwrite");
-                delTransaction.objectStore("albums").delete(cursor.key);
-                loadAlbums();
-            });
-            albumDiv.appendChild(delBtn);
-
-            albumsDiv.appendChild(albumDiv);
-            cursor.continue();
-        }
-    };
-}
-
-// Otevření album a zobrazení ve swiperu
-function openAlbum(albumName) {
-    const transaction = db.transaction(["albums"], "readonly");
-    const store = transaction.objectStore("albums");
-    const request = store.get(albumName);
-    request.onsuccess = function() {
-        const album = request.result;
-        if(album && album.files.length > 0) {
-            swiperWrapper.innerHTML = '';
-            album.files.forEach((f, idx) => {
-                const slide = document.createElement('div');
-                slide.className = 'swiper-slide';
-                if(f.type.startsWith('image/')) {
-                    const img = document.createElement('img');
-                    img.src = f.data;
-                    slide.appendChild(img);
-                } else if(f.type.startsWith('video/')) {
-                    const vid = document.createElement('video');
-                    vid.src = f.data;
-                    vid.controls = true;
-                    slide.appendChild(vid);
-                }
-
-                // Přidání smazání souboru
-                const delBtn = document.createElement('button');
-                delBtn.textContent = '🗑️';
-                delBtn.style.position='absolute';
-                delBtn.style.top='10px';
-                delBtn.style.right='10px';
-                delBtn.addEventListener('click', ()=>{
-                    album.files.splice(idx,1);
-                    const tx = db.transaction(["albums"], "readwrite");
-                    tx.objectStore("albums").put(album);
-                    openAlbum(albumName);
-                });
-                slide.appendChild(delBtn);
-
-                swiperWrapper.appendChild(slide);
-            });
-            swiperContainer.style.display = 'block';
-            swiper = new Swiper('.swiper', { loop:true, navigation:true });
-        }
-    };
-}
-
-// Eventy
-addFileBtn.addEventListener('click', ()=> fileInput.click());
-fileInput.addEventListener('change', ()=> addFiles(fileInput.files));
+/* init */
+(function init(){
+  redrawAll();
+  
+  const currentTheme = document.body.getAttribute('data-theme') || 'light';
+  updateThemeButton(currentTheme);
+  if(currentTheme === 'dark') {
+      initStarfield();
+      startStarfield(); 
+  }
+})();
 
 </script>
+
 </body>
 </html>
