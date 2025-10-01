@@ -109,10 +109,17 @@
   .stat-card.balance{ border-left:4px solid var(--accent); }
 
   /* NOVÉ: Cíl - progress bar */
-  .goal-item{ display:flex; justify-content:space-between; align-items:center; gap:15px; padding:12px; 
+  .goal-item{ display:flex; flex-direction:column; gap:10px; padding:12px; 
     border-radius:10px; border:1px solid var(--border); background:linear-gradient(180deg,var(--card),transparent); 
     cursor:pointer; transition:background .18s; margin-top:8px;
   }
+  .goal-item-header{
+    display:flex; justify-content:space-between; align-items:center; gap:15px;
+  }
+  .goal-item-content{
+    display:flex; justify-content:space-between; align-items:center; gap:10px;
+  }
+  .goal-item-info{ flex-grow:1; }
   .goal-item:hover{ background:linear-gradient(180deg, rgba(255,255,255,0.8), transparent); }
   [data-theme='dark'] .goal-item:hover{ background:linear-gradient(180deg, rgba(255,255,255,0.05), transparent); }
   .progress-bar{ width:100%; background:#e0e0e0; border-radius:4px; margin-top:6px; }
@@ -153,6 +160,18 @@
       background: rgba(0,0,0,0.02);
   }
   .history-stat-grid > div strong { display: block; font-size: 1.1em; margin-top: 2px; }
+
+  /* Kategorie tagy */
+  .category-tag {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 10px; border-radius: 8px; font-weight: 700;
+    cursor: pointer; transition: background 0.1s;
+    font-size: 0.9em;
+  }
+  .category-tag.expense { background: rgba(239, 68, 68, 0.1); color: var(--danger); border: 1px solid rgba(239, 68, 68, 0.3); }
+  .category-tag.income { background: rgba(50, 205, 50, 0.1); color: var(--accent2); border: 1px solid rgba(50, 205, 50, 0.3); }
+  .category-tag i.fa-times { margin-left: 4px; font-size: 0.8em; color: var(--muted); }
+  .category-tag:hover { opacity: 0.85; }
 
 
   @media(max-width:820px){
@@ -229,6 +248,8 @@
           <option value="expense">Výdaj</option>
           <option value="income">Příjem</option>
         </select>
+        <select id="transactionCategory">
+            </select>
         <button class="btn" id="addTransactionBtn" onclick="addTransaction()"><i class="fa fa-plus-square"></i> Přidat transakci</button>
       </div>
     </div>
@@ -415,13 +436,20 @@
         </div>
         <div>
             <label for="modalGoalSaved">Aktuálně naspořeno:</label>
-            <input type="number" id="modalGoalSaved" style="width:100%"/>
+            <input type="number" id="modalGoalSaved" style="width:100%" disabled/> </div>
+        <div style="border-top:1px solid var(--border); padding-top:15px; margin-top:15px">
+            <label for="modalInvestAmount">Přidat peníze (odečte se z rozpočtu):</label>
+            <div style="display:flex; gap:8px">
+                <input type="number" id="modalInvestAmount" placeholder="Částka k investování" style="flex-grow:1"/>
+                <button class="btn income" onclick="addInvestmentFromModal()"><i class="fa fa-arrow-up"></i> Přidat investici</button>
+            </div>
+            <div class="muted" style="font-size:0.8em; margin-top:5px;">Datum transakce: <input type="date" id="modalInvestDate" style="width:150px; padding:5px 8px; font-size:0.9em;"/></div>
         </div>
       </div>
   
       <div class="modal-footer">
         <button class="btn danger" id="modalGoalDeleteBtn"><i class="fa fa-trash"></i> Smazat cíl</button>
-        <button class="btn" onclick="saveGoalProfile()"><i class="fa fa-save"></i> Uložit změny</button>
+        <button class="btn" onclick="saveGoalProfile()"><i class="fa fa-save"></i> Uložit změny cíle</button>
       </div>
     </div>
 </div>
@@ -465,7 +493,7 @@ function loadStore(){
     if(rawC) store.categories = JSON.parse(rawC);
     
     // Zajištění výchozích kategorií
-    if(!store.categories || store.categories.length === 0 || !store.categories.some(c => c.name === 'Nezadáno')) {
+    if(!store.categories || store.categories.length === 0) {
         store.categories = [
             { name: 'Nezadáno', type: 'expense' },
             { name: 'Jídlo', type: 'expense' },
@@ -505,6 +533,8 @@ function saveStore(){
 
 /* helpers */
 function $(id){return document.getElementById(id)}
+function closeModal(id){ $(id).style.display = 'none'; currentTransaction = null; currentGoal = null; }
+
 function formatDate(d){ 
     if(!d) return '';
     const dt = new Date(d); 
@@ -532,10 +562,7 @@ function todayShort(){ const n = new Date(); $('todayShort').textContent = n.toL
 
 
 /* MĚNA A KURZ */
-// Simuluje získání kurzu. V reálné aplikaci by zde byl AJAX/Fetch dotaz na API (např. ČNB nebo ECB).
 function fetchExchangeRate(){
-    // SIMULACE: Pevný kurz 1 EUR = 24.50 CZK
-    // Lze použít např.: store.exchangeRate = await getApiRate();
     const simulatedRate = 24.50; 
     store.exchangeRate = simulatedRate;
     saveStore();
@@ -545,10 +572,8 @@ function fetchExchangeRate(){
 function changeCurrency(){
     store.currency = $('currencySelect').value;
     saveStore();
-    // Po změně měny je nutné překreslit celou aplikaci
     applyFilter();
     renderGoals();
-    // Přepočítat i statistiky a historii, pokud jsou zobrazeny
     if(document.querySelector('.nav button[data-section="stats"]').classList.contains('active')) computeStats();
     if(document.querySelector('.nav button[data-section="history"]').classList.contains('active')) renderHistory();
 }
@@ -566,20 +591,19 @@ function showSection(e){
   if(sec === 'stats') computeStats();
   if(sec === 'goals') renderGoals();
   if(sec === 'history') renderHistory();
+  if(sec === 'settings') renderCategories(); // Ujistíme se, že se kategorie načtou
 }
 
 /* MĚSÍČNÍ FILTR */
-// Funkce pro nastavení rozsahu filtru podle vybraného měsíce
 function applyMonthFilter() {
     const selected = $('monthSelect').value;
     if (selected === 'custom') {
-        // Povolíme ruční zadávání
         $('filterFrom').disabled = false;
         $('filterTo').disabled = false;
     } else {
         const [year, month] = selected.split('-');
         const dateFrom = new Date(year, month - 1, 1);
-        const dateTo = new Date(year, month, 0); // Poslední den měsíce
+        const dateTo = new Date(year, month, 0); 
 
         $('filterFrom').value = dateFrom.toISOString().slice(0, 10);
         $('filterTo').value = dateTo.toISOString().slice(0, 10);
@@ -598,7 +622,6 @@ function renderMonthOptions() {
     const options = [];
     const monthNames = ["Leden", "Únor", "Březen", "Duben", "Květen", "Červen", "Červenec", "Srpen", "Září", "Říjen", "Listopad", "Prosinec"];
 
-    // Posledních 12 měsíců
     for (let i = 0; i < 12; i++) {
         const date = new Date(today.getFullYear(), today.getMonth() - i, 1);
         const year = date.getFullYear();
@@ -610,12 +633,11 @@ function renderMonthOptions() {
         options.push({ value, label });
     }
     
-    // Aktuální měsíc je první
     options.reverse().forEach((opt, index) => {
         const option = document.createElement('option');
         option.value = opt.value;
         option.textContent = opt.label;
-        if (index === options.length - 1) { // Vybrán aktuální měsíc
+        if (index === options.length - 1) { 
             option.selected = true;
         }
         select.appendChild(option);
@@ -626,7 +648,112 @@ function renderMonthOptions() {
     customOption.textContent = 'Vlastní období...';
     select.appendChild(customOption);
     
-    applyMonthFilter(); // Nastaví výchozí filtr na aktuální měsíc
+    applyMonthFilter(); 
+}
+
+
+/* SETTINGS - Kategorie (OPRAVENO) */
+
+// Nová pomocná funkce pro aktualizaci SELECT polí s kategoriemi
+function updateCategorySelects() {
+    const selects = [$('transactionCategory'), $('modalTCategory')];
+    
+    selects.forEach(select => {
+        if (!select) return; // Pokud modal ještě není v DOM (např. modalTCategory)
+        
+        const currentSelected = select.value;
+        const currentType = select.id === 'transactionCategory' ? $('transactionType').value : $('modalTType').value;
+        
+        select.innerHTML = '';
+        
+        const relevantCategories = store.categories.filter(c => c.type === currentType);
+
+        if (relevantCategories.length === 0) {
+            const opt = document.createElement('option');
+            opt.value = 'Nezadáno';
+            opt.textContent = 'Nezadáno';
+            select.appendChild(opt);
+            return;
+        }
+
+        relevantCategories.forEach(c => {
+            const opt = document.createElement('option');
+            opt.value = c.name;
+            opt.textContent = c.name;
+            select.appendChild(opt);
+        });
+
+        if (currentSelected && relevantCategories.some(c => c.name === currentSelected)) {
+            select.value = currentSelected;
+        } else {
+            select.value = relevantCategories[0]?.name || 'Nezadáno';
+        }
+    });
+}
+
+// Při změně typu transakce se musí aktualizovat i kategorie
+if ($('transactionType')) {
+    $('transactionType').onchange = updateCategorySelects;
+}
+
+function renderCategories() {
+    const list = $('categoryList');
+    list.innerHTML = '';
+
+    store.categories.forEach((cat, index) => {
+        const tag = document.createElement('div');
+        tag.className = `category-tag ${cat.type}`;
+        tag.innerHTML = `${cat.name} <i class="fa fa-times" onclick="deleteCategory(${index}, event)"></i>`;
+        list.appendChild(tag);
+    });
+    
+    // Po vykreslení aktualizujeme i SELECTy
+    updateCategorySelects();
+}
+
+function addCategory() {
+    const name = $('newCategoryName').value.trim();
+    const type = $('categoryType').value;
+
+    if (!name) {
+        alert('Zadejte prosím název kategorie.');
+        return;
+    }
+    if (store.categories.some(c => c.name.toLowerCase() === name.toLowerCase())) {
+        alert('Tato kategorie již existuje.');
+        return;
+    }
+    
+    store.categories.push({ name: name, type: type });
+    saveStore();
+    $('newCategoryName').value = '';
+    renderCategories();
+}
+
+function deleteCategory(index, event) {
+    event.stopPropagation(); // Zabraňuje spuštění jiné akce na tagu (která zde není)
+
+    const catToDelete = store.categories[index];
+
+    if (catToDelete.name === 'Investice' || catToDelete.name === 'Nezadáno' || catToDelete.name === 'Jídlo' || catToDelete.name === 'Výplata') {
+        alert('Tuto výchozí/klíčovou kategorii nelze smazat.');
+        return;
+    }
+    
+    if (confirm(`Opravdu chcete smazat kategorii "${catToDelete.name}"? Všechny transakce s touto kategorií budou převedeny na "Nezadáno".`)) {
+        // Přesun transakcí
+        store.transactions.forEach(t => {
+            if (t.category === catToDelete.name) {
+                t.category = 'Nezadáno';
+            }
+        });
+
+        store.categories.splice(index, 1);
+        saveStore();
+        renderCategories();
+        applyFilter(); // Aktualizace tabulky transakcí
+        computeStats(); // Aktualizace statistik
+    }
 }
 
 
@@ -636,89 +763,30 @@ function addTransaction(){
     const desc = $('transactionDesc').value.trim();
     const amount = parseFloat($('transactionAmount').value);
     const type = $('transactionType').value;
+    const category = $('transactionCategory').value; // Zde načteme vybranou kategorii
     
     if(!date || !desc || isNaN(amount) || amount <= 0){
         alert('Vyplňte prosím datum, popis a platnou kladnou částku.');
         return;
     }
-    
-    // Přidání výchozí kategorie (Nezadáno nebo první dle typu)
-    const defaultCategory = store.categories.find(c => c.type === type && c.name !== 'Nezadáno')?.name || 
-                            store.categories.find(c => c.name === 'Nezadáno')?.name || 
-                            store.categories[0]?.name || 'Nezadáno';
-
 
     const newTransaction = {
         id: Math.random().toString(36).substring(2, 9),
         date: date,
         desc: desc,
-        amount: amount, // Vždy ukládáme v CZK (základní měně)
+        amount: amount, 
         type: type,
-        category: defaultCategory,
+        category: category, 
     };
 
     store.transactions.push(newTransaction);
     saveStore();
     
-    // Reset formuláře
     $('transactionDesc').value = '';
     $('transactionAmount').value = '';
     
-    // Přegenerování tabulky
     applyFilter();
-    renderMonthOptions(); // Aktualizujeme možnosti, pokud by nová transakce spadala do staršího měsíce, který ještě není v seznamu
-}
-
-/* BUDGET - render tabulky transakcí */
-let currentTransactions = [];
-function renderTransactionTable(transactions){
-    currentTransactions = transactions;
-    const tbody = $('tableBody');
-    tbody.innerHTML = '';
-    let totalBalance = 0;
-
-    transactions.forEach((t) => {
-        const tr = document.createElement('tr');
-        const isExpense = t.type === 'expense';
-        
-        // Částka transakce je vždy v CZK, ale zobrazujeme ji v aktuální měně
-        const amountDisplay = t.amount; 
-        
-        if(isExpense) totalBalance -= amountDisplay;
-        else totalBalance += amountDisplay;
-
-        const td1 = document.createElement('td'); td1.textContent = formatDate(t.date);
-        const td2 = document.createElement('td'); 
-        td2.innerHTML = `<strong>${t.desc}</strong><br><span class="muted">${t.category || 'Nezadáno'}</span>`;
-        
-        const td3 = document.createElement('td'); 
-        const badge = document.createElement('span');
-        badge.className = `badge ${isExpense ? 'danger' : 'income'}`;
-        badge.textContent = isExpense ? 'Výdaj' : 'Příjem';
-        td3.appendChild(badge);
-        
-        const td4 = document.createElement('td'); td4.textContent = formatAmount(t.amount); // Zobrazení v aktuální měně
-        td4.style.color = isExpense ? 'var(--danger)' : 'var(--accent2)';
-        td4.style.fontWeight = '700';
-
-        const td5 = document.createElement('td');
-        const editBtn = document.createElement('button');
-        editBtn.className = 'btn secondary action-small';
-        editBtn.innerHTML = '<i class="fa fa-edit"></i> Upravit';
-        editBtn.onclick = () => openTransactionModal(t.id);
-        td5.appendChild(editBtn);
-
-        tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3); tr.appendChild(td4); tr.appendChild(td5);
-        tbody.appendChild(tr);
-    });
-    
-    // Aktualizace celkové bilance v záhlaví - přepočítáváme CZK celkovou bilanci do zvolené měny
-    const balanceEl = $('totalBalance');
-    balanceEl.textContent = formatAmount(totalBalance); 
-    balanceEl.style.color = totalBalance >= 0 ? 'var(--accent2)' : 'var(--danger)';
-    
-    // Aktualizace hlavičky tabulky
-    document.querySelector('#mainTable thead th:nth-child(4)').textContent = 'Částka (' + store.currency + ')';
+    renderMonthOptions(); 
 }
 
 /* BUDGET - transakční modal */
@@ -728,17 +796,12 @@ function openTransactionModal(id){
     currentTransaction = store.transactions.find(t => t.id === id);
     if(!currentTransaction) return;
     
-    // ... (zbytek openTransactionModal zůstává stejný, jen se ujistíme, že data se ukládají a načítají v CZK, což je v tomto kódu výchozí chování) ...
-    // Částka se načítá v CZK (amount) a zobrazuje se jako číslo, uživatel zadá částku v CZK!
-    // V případě, že by měl uživatel zadávat transakce v EUR, bylo by nutné transakční modal upravit.
-    // Pro zjednodušení uživatel vždy zadává v CZK a pouze se přepíná zobrazení.
-    
     $('modalTransactionTitle').innerHTML = `<i class="fa fa-edit"></i> Úprava transakce: ${currentTransaction.desc}`;
     
-    // Načtení kategorií
     const updateCategorySelect = (currentType) => {
         const categorySelect = $('modalTCategory');
         categorySelect.innerHTML = '';
+        // Filtr kategorií dle typu
         const relevantCategories = store.categories.filter(c => c.type === currentType);
         
         relevantCategories.forEach(c => {
@@ -748,13 +811,17 @@ function openTransactionModal(id){
             categorySelect.appendChild(opt);
         });
         
-        // Nastavíme vybranou kategorii (pokud existuje)
-        categorySelect.value = currentTransaction.category || 'Nezadáno';
+        // Nastavíme vybranou kategorii (pokud existuje a je v seznamu)
+        if (relevantCategories.some(c => c.name === currentTransaction.category)) {
+             categorySelect.value = currentTransaction.category;
+        } else {
+             categorySelect.value = relevantCategories[0]?.name || 'Nezadáno'; // Fallback
+        }
     };
 
     $('modalTDate').value = currentTransaction.date;
     $('modalTDesc').value = currentTransaction.desc;
-    $('modalTAmount').value = currentTransaction.amount; // Ukládáme a načítáme v CZK
+    $('modalTAmount').value = currentTransaction.amount; 
     $('modalTType').value = currentTransaction.type;
     updateCategorySelect(currentTransaction.type); 
     
@@ -774,7 +841,7 @@ function saveTransactionProfile(){
     const newType = $('modalTType').value;
     const newCategory = $('modalTCategory').value;
     
-    const amount = parseFloat($('modalTAmount').value); // Ukládáme a editujeme v CZK
+    const amount = parseFloat($('modalTAmount').value); 
     if(!$('modalTDate').value || !$('modalTDesc').value.trim() || isNaN(amount) || amount <= 0){
         alert('Vyplňte prosím datum, popis a platnou kladnou částku.');
         return;
@@ -791,10 +858,236 @@ function saveTransactionProfile(){
     applyFilter();
     computeStats();
 }
-// ... (deleteTransaction a closeModal zůstávají stejné)
 
-/* BUDGET - filtrování a řazení */
+function deleteTransaction(id){
+    if(confirm('Opravdu chcete tuto transakci smazat?')) {
+        store.transactions = store.transactions.filter(t => t.id !== id);
+        saveStore();
+        closeModal('transactionModal');
+        applyFilter();
+        computeStats();
+    }
+}
+
+
+/* GOALS - přidání investičního cíle (OPRAVENO) */
+
+function addGoal(){
+    const name = $('newGoalName').value.trim();
+    const target = parseFloat($('newGoalTarget').value);
+    const saved = parseFloat($('newGoalSaved').value) || 0; // Může být 0
+
+    if(!name || isNaN(target) || target <= 0 || isNaN(saved) || saved < 0){
+        alert('Vyplňte prosím název a platnou cílovou částku.');
+        return;
+    }
+    
+    const newGoal = {
+        id: Math.random().toString(36).substring(2, 9),
+        name: name,
+        target: target,
+        saved: saved,
+    };
+
+    store.goals.push(newGoal);
+    saveStore();
+    
+    $('newGoalName').value = '';
+    $('newGoalTarget').value = '';
+    $('newGoalSaved').value = '';
+    
+    renderGoals();
+}
+
+function renderGoals(){
+    const list = $('goalsList');
+    list.innerHTML = '';
+
+    if (store.goals.length === 0) {
+        list.innerHTML = '<div class="muted" style="margin-top:10px">Zatím nebyly přidány žádné cíle.</div>';
+        return;
+    }
+
+    store.goals.forEach(g => {
+        const percentage = g.target > 0 ? ((g.saved / g.target) * 100).toFixed(1) : 0;
+        const progressWidth = Math.min(100, parseFloat(percentage)) + '%';
+        const isComplete = g.saved >= g.target;
+
+        const item = document.createElement('div');
+        item.className = 'goal-item';
+        item.onclick = () => openGoalModal(g.id);
+        
+        item.innerHTML = `
+            <div class="goal-item-header">
+                <div style="font-size:1.1em; font-weight:700">${g.name} ${isComplete ? '<i class="fa fa-check-circle" style="color:var(--accent2)"></i>' : ''}</div>
+                <div class="badge info">${percentage}%</div>
+            </div>
+            <div class="goal-item-content">
+                <div class="goal-item-info">
+                    <div class="muted">Naspořeno: <strong>${formatAmount(g.saved)}</strong> / Cíl: ${formatAmount(g.target)}</div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: ${progressWidth}; background:${isComplete ? 'var(--accent)' : 'var(--accent2)'}"></div>
+                    </div>
+                </div>
+            </div>
+        `;
+        list.appendChild(item);
+    });
+}
+
+let currentGoal = null;
+
+function openGoalModal(id){
+    currentGoal = store.goals.find(g => g.id === id);
+    if(!currentGoal) return;
+    
+    $('modalGoalTitle').innerHTML = `<i class="fa fa-bullseye"></i> Úprava cíle: ${currentGoal.name}`;
+    
+    // Načtení dat cíle
+    $('modalGoalName').value = currentGoal.name;
+    $('modalGoalTarget').value = currentGoal.target;
+    $('modalGoalSaved').value = currentGoal.saved;
+    
+    // Reset investičního pole
+    $('modalInvestAmount').value = '';
+    $('modalInvestDate').value = new Date().toISOString().slice(0, 10);
+
+    $('modalGoalDeleteBtn').onclick = () => deleteGoal(currentGoal.id);
+    
+    $('goalModal').style.display = 'flex';
+}
+
+function saveGoalProfile(){
+    if(!currentGoal) return;
+    
+    const target = parseFloat($('modalGoalTarget').value);
+    
+    if(!$('modalGoalName').value.trim() || isNaN(target) || target <= 0){
+        alert('Vyplňte prosím název a platnou cílovou částku.');
+        return;
+    }
+    
+    currentGoal.name = $('modalGoalName').value.trim();
+    currentGoal.target = target;
+    // currentGoal.saved se aktualizuje jen přes investici, v modalu je pouze pro zobrazení (disabled)
+    
+    saveStore();
+    closeModal('goalModal');
+    renderGoals();
+}
+
+function deleteGoal(id){
+    if(confirm('Opravdu chcete tento investiční cíl smazat?')) {
+        store.goals = store.goals.filter(g => g.id !== id);
+        saveStore();
+        closeModal('goalModal');
+        renderGoals();
+    }
+}
+
+// NOVÁ KLÍČOVÁ FUNKCE: Přidání peněz do cíle + odepsání z rozpočtu
+function addInvestmentToGoal(goalId, amount, date){
+    const goal = store.goals.find(g => g.id === goalId);
+    if(!goal || isNaN(amount) || amount <= 0) return false;
+
+    // 1. Přičtení k naspořené částce cíle
+    goal.saved += amount;
+
+    // 2. Vytvoření výdajové transakce (Investice)
+    const newTransaction = {
+        id: Math.random().toString(36).substring(2, 9),
+        date: date,
+        desc: `Investice do cíle: ${goal.name}`,
+        amount: amount, 
+        type: 'expense',
+        category: 'Investice',
+    };
+
+    store.transactions.push(newTransaction);
+    
+    saveStore();
+    return true;
+}
+
+function addInvestmentFromModal(){
+    if(!currentGoal) return;
+
+    const amount = parseFloat($('modalInvestAmount').value);
+    const date = $('modalInvestDate').value;
+
+    if (isNaN(amount) || amount <= 0 || !date) {
+        alert('Zadejte prosím platnou kladnou částku a datum pro investici.');
+        return;
+    }
+    
+    if (addInvestmentToGoal(currentGoal.id, amount, date)) {
+        // Aktualizujeme zobrazenou naspořenou částku v modalu
+        currentGoal = store.goals.find(g => g.id === currentGoal.id); // Znovu načteme aktuální data
+        $('modalGoalSaved').value = currentGoal.saved;
+
+        alert(`Investice ${formatAmount(amount)} byla přičtena k cíli "${currentGoal.name}" a odečtena z rozpočtu.`);
+
+        // Vyčistíme pole a aktualizujeme zobrazení
+        $('modalInvestAmount').value = '';
+        renderGoals();
+        applyFilter(); // Aktualizace rozpočtu a statistik
+    } else {
+        alert('Nepodařilo se přidat investici. Zkuste to znovu.');
+    }
+}
+
+
+/* Ostatní funkce */
+function renderTransactionTable(transactions){
+    // ... (Zůstává stejné jako v původním kódu) ...
+    currentTransactions = transactions;
+    const tbody = $('tableBody');
+    tbody.innerHTML = '';
+    let totalBalance = 0;
+
+    transactions.forEach((t) => {
+        const tr = document.createElement('tr');
+        const isExpense = t.type === 'expense';
+        
+        const amountDisplay = t.amount; 
+        
+        if(isExpense) totalBalance -= amountDisplay;
+        else totalBalance += amountDisplay;
+
+        const td1 = document.createElement('td'); td1.textContent = formatDate(t.date);
+        const td2 = document.createElement('td'); 
+        td2.innerHTML = `<strong>${t.desc}</strong><br><span class="muted">${t.category || 'Nezadáno'}</span>`;
+        
+        const td3 = document.createElement('td'); 
+        const badge = document.createElement('span');
+        badge.className = `badge ${isExpense ? 'danger' : 'income'}`;
+        badge.textContent = isExpense ? 'Výdaj' : 'Příjem';
+        td3.appendChild(badge);
+        
+        const td4 = document.createElement('td'); td4.textContent = formatAmount(t.amount); 
+        td4.style.color = isExpense ? 'var(--danger)' : 'var(--accent2)';
+        td4.style.fontWeight = '700';
+
+        const td5 = document.createElement('td');
+        const editBtn = document.createElement('button');
+        editBtn.className = 'btn secondary action-small';
+        editBtn.innerHTML = '<i class="fa fa-edit"></i> Upravit';
+        editBtn.onclick = () => openTransactionModal(t.id);
+        td5.appendChild(editBtn);
+
+        tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3); tr.appendChild(td4); tr.appendChild(td5);
+        tbody.appendChild(tr);
+    });
+    
+    const balanceEl = $('totalBalance');
+    balanceEl.textContent = formatAmount(totalBalance); 
+    balanceEl.style.color = totalBalance >= 0 ? 'var(--accent2)' : 'var(--danger)';
+    
+    document.querySelector('#mainTable thead th:nth-child(4)').textContent = 'Částka (' + store.currency + ')';
+}
+
 function applyFilter(){
+    // ... (Zůstává stejné jako v původním kódu) ...
     const f = $('filterFrom').value ? new Date($('filterFrom').value) : new Date(0); 
     const t = $('filterTo').value ? new Date($('filterTo').value) : new Date();
     
@@ -830,10 +1123,8 @@ function applySort(){
     applyFilter(); 
 }
 
-// ... (Sekce GOALS, STATS a SETTINGS zůstávají stejné, jen jsou upraveny, aby používaly novou formatAmount() pro přepočet měn) ...
-
-/* STATS - přepočet a zobrazení přehledu */
 function computeStats(){
+    // ... (Zůstává stejné jako v původním kódu) ...
     const f = $('filterFrom').value ? new Date($('filterFrom').value) : new Date(0);
     const t = $('filterTo').value ? new Date($('filterTo').value) : new Date();
     
@@ -857,7 +1148,6 @@ function computeStats(){
     });
 
     filtered.forEach(t => {
-        // Všechny částky jsou stále v CZK
         if(t.type === 'income'){
             totalIncome += t.amount;
         } else {
@@ -873,13 +1163,11 @@ function computeStats(){
 
     const totalBalance = totalIncome - totalExpense;
 
-    // Zobrazení v aktuální měně
     $('statBalance').textContent = formatAmount(totalBalance);
     $('statBalance').style.color = totalBalance >= 0 ? 'var(--accent2)' : 'var(--danger)';
     $('statIncome').textContent = formatAmount(totalIncome);
     $('statExpense').textContent = formatAmount(totalExpense);
 
-    // 2. Kategorie
     const catCont = $('categoryStats'); catCont.innerHTML = '';
     const sortedCats = Object.keys(categoryTotals).map(name => ({
         name,
@@ -902,16 +1190,14 @@ function computeStats(){
     });
 }
 
-
-/* SECTIONS - Historie */
 function renderHistory(){
+    // ... (Zůstává stejné jako v původním kódu) ...
     const listCont = $('historyList');
     listCont.innerHTML = '';
     
     const today = new Date();
     const monthlyStats = {};
 
-    // 1. Sesbíráme data po měsících (posledních 12)
     for (let i = 0; i < 12; i++) {
         const date = new Date(today.getFullYear(), today.getMonth() - i, 1);
         const year = date.getFullYear();
@@ -919,17 +1205,15 @@ function renderHistory(){
         const key = `${year}-${month.toString().padStart(2, '0')}`;
         const monthName = ["Leden", "Únor", "Březen", "Duben", "Květen", "Červen", "Červenec", "Srpen", "Září", "Říjen", "Listopad", "Prosinec"][month];
         
-        // Nastavíme první a poslední den měsíce pro filtrování
         const dateFrom = new Date(year, month, 1);
         const dateTo = new Date(year, month + 1, 0); 
-        dateTo.setHours(23, 59, 59, 999); // Až do konce dne
+        dateTo.setHours(23, 59, 59, 999); 
 
         let totalIncome = 0;
         let totalExpense = 0;
 
         store.transactions.forEach(t => {
             const tDate = new Date(t.date);
-            // Přidáme transakce, které jsou v rozsahu [dateFrom, dateTo]
             if (tDate >= dateFrom && tDate <= dateTo) {
                 if (t.type === 'income') {
                     totalIncome += t.amount;
@@ -949,7 +1233,6 @@ function renderHistory(){
         };
     }
     
-    // 2. Vykreslíme výsledky v obráceném pořadí (nejnovější nahoře)
     Object.keys(monthlyStats).sort().reverse().forEach(key => {
         const stats = monthlyStats[key];
         const card = document.createElement('div');
@@ -969,35 +1252,94 @@ function renderHistory(){
     });
 }
 
-// ... (clearAll, exportAllJSON, importAllJSON, exportCSV zůstávají stejné) ...
 
+function clearAll(){
+    if(confirm('POZOR: Opravdu chcete smazat VŠECHNA data (transakce, cíle, kategorie)? Tato akce je nevratná.')){
+        localStorage.clear();
+        alert('Všechna data byla smazána.');
+        window.location.reload();
+    }
+}
+
+function exportAllJSON(){
+    const data = JSON.stringify(store, null, 2);
+    const blob = new Blob([data], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'financni_planovac_export_' + new Date().toISOString().slice(0, 10) + '.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+function importAllJSON(event){
+    const file = event.target.files[0];
+    if(!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            const importedStore = JSON.parse(e.target.result);
+            if(confirm('Opravdu chcete importovat tato data? PŘEPÍŠÍ AKTUÁLNÍ DATA.')){
+                localStorage.setItem(LS_TRANSACTIONS, JSON.stringify(importedStore.transactions || []));
+                localStorage.setItem(LS_GOALS, JSON.stringify(importedStore.goals || []));
+                localStorage.setItem(LS_CATEGORIES, JSON.stringify(importedStore.categories || []));
+                localStorage.setItem(LS_CURRENCY, importedStore.currency || 'CZK');
+                localStorage.setItem(LS_EXCHANGE_RATE, importedStore.exchangeRate || 1);
+                
+                alert('Data úspěšně importována. Aplikace se obnoví.');
+                window.location.reload();
+            }
+        } catch (error) {
+            alert('Chyba při nahrávání souboru. Ujistěte se, že se jedná o platný JSON soubor. Chyba: ' + error.message);
+        }
+    };
+    reader.readAsText(file);
+}
+
+function exportCSV() {
+    let csv = 'Datum;Popis;Typ;Částka (' + store.currency + ');Kategorie\n';
+    currentTransactions.forEach(t => {
+        const amountDisplay = t.amount; // Ukládáme v CZK, ale pro export můžeme převést (zde ponecháno v CZK kvůli jednoduchosti, lze přepsat na formatAmount(t.amount, 'CZK').replace(/,/g, '') pro správné CSV)
+        csv += `${t.date};"${t.desc.replace(/"/g, '""')}";${t.type === 'income' ? 'Příjem' : 'Výdaj'};${t.amount.toString().replace('.', ',')};${t.category || 'Nezadáno'}\n`;
+    });
+
+    const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csv], { type: 'text/csv;charset=utf-8;' }); // BOM pro správné kódování v Excelu
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'financni_planovac_export_transakci.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
 
 /* redraw / orchestrace */
 function redrawAll(){
   loadStore();
-  fetchExchangeRate(); // Načtení (simulace) kurzu
+  fetchExchangeRate(); 
   todayShort();
   
-  renderMonthOptions(); // Vytvoří možnosti měsíčního filtru a aplikuje výchozí
+  renderMonthOptions(); 
   
-  // Ostatní výchozí nastavení filtru a data transakce
   const now = new Date();
   if(!$('transactionDate').value) $('transactionDate').value = now.toISOString().slice(0,10);
   
   $('currencySelect').value = store.currency; 
 
-  renderCategories(); 
+  renderCategories(); // DŮLEŽITÉ: Načte kategorie i do SELECTu
   renderGoals(); 
   applyFilter(); 
   
-  // Zajištění správné ikony motivu
   const currentTheme = document.body.getAttribute('data-theme') || 'light';
   updateThemeButton(currentTheme);
 }
 
 
-/* theme & starfield animation (zachováno z původního kódu) */
-// ... (logika pro starfield a toggleTheme je beze změny) ...
+/* theme & starfield animation */
 let starfieldCtx = null;
 let stars = [];
 let starAnimId = null;
