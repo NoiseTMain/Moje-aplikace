@@ -152,6 +152,10 @@
       <div class="sub muted">Rozpočet, Investice a Přehled</div>
     </div>
     <div style="display:flex;gap:8px;align-items:center">
+      <select id="currencySelect" onchange="changeCurrency()" style="padding:10px 12px; border-radius:8px; border:1px solid var(--border); background:var(--card); color:var(--text); font-weight:700;">
+          <option value="CZK">Kč (CZK)</option>
+          <option value="EUR">€ (EUR)</option>
+      </select>
       <div id="todayShort" class="muted"></div>
       <button class="btn secondary" onclick="toggleTheme()" id="themeBtn"><i class="fa fa-moon"></i> Přepnout motiv</button>
     </div>
@@ -191,7 +195,7 @@
       <div class="form-row" style="margin-top:14px">
         <input type="date" id="transactionDate" />
         <input type="text" id="transactionDesc" placeholder="Popis (např. 'Výplata' nebo 'Nájem')"/>
-        <input type="number" id="transactionAmount" placeholder="Částka (Kč)"/>
+        <input type="number" id="transactionAmount" placeholder="Částka"/>
         <select id="transactionType">
           <option value="expense">Výdaj</option>
           <option value="income">Příjem</option>
@@ -212,7 +216,7 @@
       <div class="table-wrap">
         <table class="main" id="mainTable">
           <thead>
-            <tr><th>Datum</th><th>Popis</th><th>Typ</th><th>Částka (Kč)</th><th>Akce</th></tr>
+            <tr><th>Datum</th><th>Popis</th><th>Typ</th><th>Částka</th><th>Akce</th></tr>
           </thead>
           <tbody id="tableBody"></tbody>
         </table>
@@ -242,8 +246,8 @@
       <div style="margin-top:12px">
         <div class="form-row">
             <input type="text" id="newGoalName" placeholder="Název cíle (např. 'Auto')" style="flex-grow:1"/>
-            <input type="number" id="newGoalTarget" placeholder="Cílová částka (Kč)" style="flex-grow:1"/>
-            <input type="number" id="newGoalSaved" placeholder="Aktuálně naspořeno (Kč)" style="flex-grow:1"/>
+            <input type="number" id="newGoalTarget" placeholder="Cílová částka"/>
+            <input type="number" id="newGoalSaved" placeholder="Aktuálně naspořeno"/>
             <button class="btn" onclick="addGoal()"><i class="fa fa-plus-circle"></i> Přidat cíl</button>
         </div>
         <div id="goalsList" style="margin-top:10px"></div>
@@ -331,7 +335,7 @@
         <input type="text" id="modalTDesc" style="width:100%"/>
       </div>
       <div>
-        <label for="modalTAmount">Částka (Kč):</label>
+        <label for="modalTAmount">Částka:</label>
         <input type="number" id="modalTAmount" style="width:100%"/>
       </div>
       <div>
@@ -368,11 +372,11 @@
             <input type="text" id="modalGoalName" style="width:100%"/>
         </div>
         <div>
-            <label for="modalGoalTarget">Cílová částka (Kč):</label>
+            <label for="modalGoalTarget">Cílová částka:</label>
             <input type="number" id="modalGoalTarget" style="width:100%"/>
         </div>
         <div>
-            <label for="modalGoalSaved">Aktuálně naspořeno (Kč):</label>
+            <label for="modalGoalSaved">Aktuálně naspořeno:</label>
             <input type="number" id="modalGoalSaved" style="width:100%"/>
         </div>
       </div>
@@ -392,19 +396,13 @@
 const LS_TRANSACTIONS = 'finance_transactions_v1';
 const LS_GOALS = 'finance_goals_v1';
 const LS_CATEGORIES = 'finance_categories_v1'; 
+const LS_CURRENCY = 'finance_currency_v1';
 
 let store = {
   transactions: [], // [{id: 1, date: 'YYYY-MM-DD', desc: 'Popis', amount: 1000, type: 'income'|'expense', category: 'Kategorie'}]
   goals: [],        // [{id: 1, name: 'Auto', target: 500000, saved: 100000}]
-  categories: [
-    { name: 'Nezadáno', type: 'expense' },
-    { name: 'Jídlo', type: 'expense' },
-    { name: 'Nájem/Bydlení', type: 'expense' },
-    { name: 'Volný čas', type: 'expense' },
-    { name: 'Investice', type: 'expense' },
-    { name: 'Výplata', type: 'income' },
-    { name: 'Bonus', type: 'income' },
-  ],
+  categories: [],   // Inicializuje se v loadStore na default
+  currency: 'CZK'
 };
 
 function loadStore(){
@@ -425,21 +423,38 @@ function loadStore(){
 
     const rawC = localStorage.getItem(LS_CATEGORIES);
     if(rawC) store.categories = JSON.parse(rawC);
-    // Doplňujeme výchozí kategorie, pokud chybí
-    if(!store.categories.some(c => c.name === 'Nezadáno')) {
-        store.categories.unshift({ name: 'Nezadáno', type: 'expense' });
+    
+    // Zajištění výchozích kategorií
+    if(!store.categories || store.categories.length === 0 || !store.categories.some(c => c.name === 'Nezadáno')) {
+        store.categories = [
+            { name: 'Nezadáno', type: 'expense' },
+            { name: 'Jídlo', type: 'expense' },
+            { name: 'Nájem/Bydlení', type: 'expense' },
+            { name: 'Volný čas', type: 'expense' },
+            { name: 'Investice', type: 'expense' },
+            { name: 'Výplata', type: 'income' },
+            { name: 'Bonus', type: 'income' },
+        ];
     }
+    
+    // Načtení měny
+    const rawCurrency = localStorage.getItem(LS_CURRENCY);
+    store.currency = rawCurrency || 'CZK';
+    $('currencySelect').value = store.currency;
+
 
   }catch(e){
     console.warn('Load error',e);
     store.transactions = [];
     store.goals = [];
+    store.categories = [ { name: 'Nezadáno', type: 'expense' } ];
   }
 }
 function saveStore(){
   localStorage.setItem(LS_TRANSACTIONS, JSON.stringify(store.transactions));
   localStorage.setItem(LS_GOALS, JSON.stringify(store.goals));
   localStorage.setItem(LS_CATEGORIES, JSON.stringify(store.categories));
+  localStorage.setItem(LS_CURRENCY, store.currency);
 }
 
 /* helpers */
@@ -450,10 +465,23 @@ function formatDate(d){
     if(isNaN(dt.getTime())) { return d; }
     return dt.toLocaleDateString('cs-CZ'); 
 }
-function formatAmount(amount){
-    return new Intl.NumberFormat('cs-CZ', { style: 'currency', currency: 'CZK' }).format(amount);
+// Upravená funkce pro formátování částky, která bere v úvahu měnu
+function formatAmount(amount, currencyCode = store.currency){
+    const locale = currencyCode === 'EUR' ? 'de-DE' : 'cs-CZ'; // Použijeme CS pro CZK a DE pro EUR
+    const code = currencyCode === 'EUR' ? 'EUR' : 'CZK';
+    return new Intl.NumberFormat(locale, { style: 'currency', currency: code }).format(amount);
 }
 function todayShort(){ const n = new Date(); $('todayShort').textContent = n.toLocaleDateString('cs-CZ'); }
+
+
+/* MĚNA */
+function changeCurrency(){
+    store.currency = $('currencySelect').value;
+    saveStore();
+    // Po změně měny je nutné překreslit celou aplikaci
+    applyFilter();
+    renderGoals();
+}
 
 
 /* nav */
@@ -466,6 +494,7 @@ function showSection(e){
   $('section-'+sec).style.display = '';
   
   if(sec === 'stats') computeStats();
+  if(sec === 'goals') renderGoals();
 }
 
 /* BUDGET - přidání transakce */
@@ -481,7 +510,10 @@ function addTransaction(){
     }
     
     // Přidání výchozí kategorie (Nezadáno)
-    const category = store.categories.find(c => c.name === 'Nezadáno') ? 'Nezadáno' : (type === 'income' ? 'Výplata' : 'Jídlo');
+    const defaultCategory = store.categories.find(c => c.name === 'Nezadáno') ? 'Nezadáno' : 
+                            (type === 'income' ? store.categories.find(c => c.type === 'income')?.name || 'Nezadáno' : 
+                            store.categories.find(c => c.type === 'expense')?.name || 'Nezadáno');
+
 
     const newTransaction = {
         id: Math.random().toString(36).substring(2, 9),
@@ -489,7 +521,7 @@ function addTransaction(){
         desc: desc,
         amount: amount,
         type: type,
-        category: category,
+        category: defaultCategory,
     };
 
     store.transactions.push(newTransaction);
@@ -529,7 +561,7 @@ function renderTransactionTable(transactions){
         badge.textContent = isExpense ? 'Výdaj' : 'Příjem';
         td3.appendChild(badge);
         
-        const td4 = document.createElement('td'); td4.textContent = amountDisplay;
+        const td4 = document.createElement('td'); td4.textContent = formatAmount(t.amount); // Zobrazíme absolutní hodnotu
         td4.style.color = isExpense ? 'var(--danger)' : 'var(--accent2)';
         td4.style.fontWeight = '700';
 
@@ -548,6 +580,9 @@ function renderTransactionTable(transactions){
     const balanceEl = $('totalBalance');
     balanceEl.textContent = formatAmount(totalBalance);
     balanceEl.style.color = totalBalance >= 0 ? 'var(--accent2)' : 'var(--danger)';
+    
+    // Aktualizace hlavičky tabulky
+    document.querySelector('#mainTable thead th:nth-child(4)').textContent = 'Částka (' + store.currency + ')';
 }
 
 /* BUDGET - transakční modal */
@@ -560,33 +595,33 @@ function openTransactionModal(id){
     $('modalTransactionTitle').innerHTML = `<i class="fa fa-edit"></i> Úprava transakce: ${currentTransaction.desc}`;
     
     // Načtení kategorií
-    const categorySelect = $('modalTCategory');
-    categorySelect.innerHTML = '';
-    const relevantCategories = store.categories.filter(c => c.type === currentTransaction.type);
-    
-    if(relevantCategories.length === 0){
-        // Přidáme alespoň default pro záchranu
-        categorySelect.innerHTML = `<option value="Nezadáno">Nezadáno</option>`;
-    } else {
+    const updateCategorySelect = (currentType) => {
+        const categorySelect = $('modalTCategory');
+        categorySelect.innerHTML = '';
+        const relevantCategories = store.categories.filter(c => c.type === currentType);
+        
         relevantCategories.forEach(c => {
             const opt = document.createElement('option');
             opt.value = c.name;
             opt.textContent = c.name;
             categorySelect.appendChild(opt);
         });
-    }
+        
+        // Nastavíme vybranou kategorii (pokud existuje)
+        categorySelect.value = currentTransaction.category || 'Nezadáno';
+    };
 
     $('modalTDate').value = currentTransaction.date;
     $('modalTDesc').value = currentTransaction.desc;
     $('modalTAmount').value = currentTransaction.amount;
     $('modalTType').value = currentTransaction.type;
-    $('modalTCategory').value = currentTransaction.category || 'Nezadáno';
+    updateCategorySelect(currentTransaction.type); // Načtení při otevření
     
     // Změna typu v modálu by měla přepnout kategorie
-    $('modalTType').onchange = () => {
-        currentTransaction.type = $('modalTType').value; // Dočasně aktualizujeme typ pro filtrování kategorií
-        openTransactionModal(id); // Znovu otevřeme modal, aby se kategorie načetly
-    }
+    $('modalTType').onchange = (e) => {
+        const newType = e.target.value;
+        updateCategorySelect(newType);
+    };
 
     $('modalDeleteBtn').onclick = () => deleteTransaction(currentTransaction.id);
     
@@ -597,32 +632,23 @@ function saveTransactionProfile(){
     if(!currentTransaction) return;
     
     const newType = $('modalTType').value;
+    const newCategory = $('modalTCategory').value;
     
-    // Kontrola, zda se změnil typ a zda nová kategorie odpovídá typu
-    if(newType !== currentTransaction.type){
-        // Pokud se změnil typ, musíme zkontrolovat, zda nová kategorie je relevantní
-        const newCategory = $('modalTCategory').value;
-        const categoryValid = store.categories.find(c => c.name === newCategory && c.type === newType);
-        if(!categoryValid && newCategory !== 'Nezadáno'){
-            alert('Vybraná kategorie neodpovídá novému typu transakce. Vyberte prosím platnou kategorii.');
-            return;
-        }
-        currentTransaction.category = newCategory;
-    } else {
-        currentTransaction.category = $('modalTCategory').value;
-    }
-
-    currentTransaction.date = $('modalTDate').value;
-    currentTransaction.desc = $('modalTDesc').value.trim();
-    currentTransaction.amount = parseFloat($('modalTAmount').value);
-    currentTransaction.type = newType;
-
-
-    if(!currentTransaction.date || !currentTransaction.desc || isNaN(currentTransaction.amount) || currentTransaction.amount <= 0){
+    // Kontrola platnosti
+    const amount = parseFloat($('modalTAmount').value);
+    if(!$('modalTDate').value || !$('modalTDesc').value.trim() || isNaN(amount) || amount <= 0){
         alert('Vyplňte prosím datum, popis a platnou kladnou částku.');
         return;
     }
     
+    // Aktualizace dat
+    currentTransaction.date = $('modalTDate').value;
+    currentTransaction.desc = $('modalTDesc').value.trim();
+    currentTransaction.amount = amount;
+    currentTransaction.type = newType;
+    currentTransaction.category = newCategory;
+
+
     saveStore();
     closeModal('transactionModal');
     applyFilter();
@@ -650,25 +676,36 @@ function closeModal(id){
 function applyFilter(){
     const f = $('filterFrom').value ? new Date($('filterFrom').value) : new Date(0); // Od začátku času
     const t = $('filterTo').value ? new Date($('filterTo').value) : new Date();
-    // Nastavíme konec dne pro datum 'Do'
+    
+    // Nastavíme konec dne pro datum 'Do' pro správné filtrování
+    let filterToDate = t;
     if ($('filterTo').value) {
-        t.setDate(t.getDate() + 1);
-        t.setSeconds(t.getSeconds() - 1);
+        filterToDate = new Date($('filterTo').value);
+        filterToDate.setDate(filterToDate.getDate() + 1); // Posuneme na začátek dalšího dne
+        filterToDate.setSeconds(filterToDate.getSeconds() - 1); // A vrátíme se těsně před půlnoc
     } else {
-        t.setDate(t.getDate()); // Dnes do půlnoci
+        filterToDate.setDate(filterToDate.getDate() + 1);
+        filterToDate.setSeconds(filterToDate.getSeconds() - 1);
     }
-
-
+    
     let filtered = store.transactions.filter(t => {
         const date = new Date(t.date);
-        return date >= f && date <= t;
+        // Datum transakce musí být >= Od A < Do (+1 den, kvůli půlnoci)
+        return date >= f && date <= filterToDate;
     });
     
     // Aplikace řazení
     const sel = $('sortSelect').value;
     if(sel==='date_desc'){ filtered.sort((a,b)=> new Date(b.date) - new Date(a.date)); }
     if(sel==='date_asc'){ filtered.sort((a,b)=> new Date(a.date) - new Date(b.date)); }
-    if(sel==='amount_desc'){ filtered.sort((a,b)=> b.amount - a.amount); }
+    if(sel==='amount_desc'){ 
+        filtered.sort((a,b)=> {
+            // Při řazení částek respektujeme, že výdaje jsou "větší" než příjmy ve smyslu absolutní hodnoty,
+            // ale pro uživatele je obvykle lepší řadit podle skutečné absolutní hodnoty, nebo čistě od největší
+            // *absolutní* částky
+            return b.amount - a.amount;
+        });
+    }
     
     renderTransactionTable(filtered);
     computeStats(); // Přepočítáme statistiky po každém filtrování
@@ -762,7 +799,7 @@ function saveGoalProfile(){
     currentGoal.saved = parseFloat($('modalGoalSaved').value);
 
     if(!currentGoal.name || isNaN(currentGoal.target) || currentGoal.target <= 0 || isNaN(currentGoal.saved) || currentGoal.saved < 0){
-        alert('Zkontrolujte prosím všechna pole cíle. Částky musí být kladné.');
+        alert('Zkontrolujte prosím všechna pole cíle. Částky musí být platné a cílová částka kladná.');
         return;
     }
 
@@ -784,12 +821,16 @@ function deleteGoal(id){
 function computeStats(){
     const f = $('filterFrom').value ? new Date($('filterFrom').value) : new Date(0);
     const t = $('filterTo').value ? new Date($('filterTo').value) : new Date();
+    
     // Nastavíme konec dne pro datum 'Do'
+    let filterToDate = t;
     if ($('filterTo').value) {
-        t.setDate(t.getDate() + 1);
-        t.setSeconds(t.getSeconds() - 1);
+        filterToDate = new Date($('filterTo').value);
+        filterToDate.setDate(filterToDate.getDate() + 1); // Posuneme na začátek dalšího dne
+        filterToDate.setSeconds(filterToDate.getSeconds() - 1); // A vrátíme se těsně před půlnoc
     } else {
-        t.setDate(t.getDate()); 
+        filterToDate.setDate(filterToDate.getDate() + 1);
+        filterToDate.setSeconds(filterToDate.getSeconds() - 1);
     }
 
     let totalIncome = 0;
@@ -798,7 +839,7 @@ function computeStats(){
 
     const filtered = store.transactions.filter(t => {
         const date = new Date(t.date);
-        return date >= f && date <= t;
+        return date >= f && date <= filterToDate;
     });
 
     filtered.forEach(t => {
@@ -833,11 +874,9 @@ function computeStats(){
     sortedCats.forEach(cat => {
         const card = document.createElement('div'); 
         card.className=`stat-card ${cat.type === 'income' ? 'income' : 'expense'}`;
-        const percentage = totalIncome > 0 && cat.type === 'income' 
-            ? ((cat.amount / totalIncome) * 100).toFixed(1)
-            : totalExpense > 0 && cat.type === 'expense'
-            ? ((cat.amount / totalExpense) * 100).toFixed(1)
-            : 0;
+        
+        const total = cat.type === 'income' ? totalIncome : totalExpense;
+        const percentage = total > 0 ? ((cat.amount / total) * 100).toFixed(1) : 0;
 
         card.innerHTML = `
             <div class="muted">${cat.name} (${cat.type === 'income' ? 'Příjem' : 'Výdaj'})</div>
@@ -911,10 +950,11 @@ function clearAll(){
   localStorage.removeItem(LS_TRANSACTIONS); 
   localStorage.removeItem(LS_GOALS); 
   localStorage.removeItem(LS_CATEGORIES);
+  localStorage.removeItem(LS_CURRENCY);
   
   // Reset store na výchozí stav
   store = {
-    transactions: [], goals: [], 
+    transactions: [], goals: [], currency: 'CZK',
     categories: [
         { name: 'Nezadáno', type: 'expense' },
         { name: 'Jídlo', type: 'expense' },
@@ -933,6 +973,7 @@ function exportAllJSON(){
       transactions: store.transactions,
       goals: store.goals,
       categories: store.categories, 
+      currency: store.currency,
   };
   const blob = new Blob([JSON.stringify(dataToExport,null,2)], {type:'application/json'});
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'finance_data.json'; a.click();
@@ -956,6 +997,8 @@ function importAllJSON(event){
                 store.transactions = data.transactions;
                 store.goals = data.goals;
                 store.categories = data.categories;
+                store.currency = data.currency || 'CZK'; // Import měny, pokud je k dispozici
+                
                 saveStore();
                 redrawAll();
                 alert('Data byla úspěšně nahrána a uložena.');
@@ -972,9 +1015,9 @@ function importAllJSON(event){
 
 // Export do CSV
 function exportCSV() {
-    let csv = "Datum;Popis;Typ;Kategorie;Částka (Kč)\n";
+    let csv = "Datum;Popis;Typ;Kategorie;Částka (" + store.currency + ")\n";
     currentTransactions.forEach(t => {
-        csv += `${formatDate(t.date)};"${t.desc}";${t.type === 'income' ? 'Příjem' : 'Výdaj'};"${t.category || 'Nezadáno'}";${t.amount.toFixed(2)}\n`;
+        csv += `${t.date};"${t.desc}";${t.type === 'income' ? 'Příjem' : 'Výdaj'};"${t.category || 'Nezadáno'}";${t.amount.toFixed(2)}\n`;
     });
 
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -996,6 +1039,8 @@ function redrawAll(){
   if(!$('filterFrom').value) $('filterFrom').value = lastMonth.toISOString().slice(0,10);
   if(!$('filterTo').value) $('filterTo').value = now.toISOString().slice(0,10);
   if(!$('transactionDate').value) $('transactionDate').value = now.toISOString().slice(0,10);
+  
+  $('currencySelect').value = store.currency; // Nastavení měny
 
   renderCategories(); // Vykreslení kategorií v Nastavení
   renderGoals(); // Vykreslení cílů
@@ -1126,3 +1171,4 @@ window.addEventListener('mousemove',(e)=>{
 
 </body>
 </html>
+
