@@ -431,6 +431,38 @@
       box-shadow: 0 8px 16px rgba(0,0,0,0.1);
   }
 
+  /* Nový styl pro oranžový indikátor trvalých plateb */
+  .upcoming-indicator {
+    background: #ff9900; /* Oranžová barva pro upozornění */
+    color: white;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 0.8em;
+    margin-left: 8px;
+    font-weight: 800;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .recurring-payment-card {
+      border-left: 5px solid #ff9900;
+  }
+  .upcoming-item {
+      padding: 12px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+  }
+  .upcoming-item:last-child { border-bottom: none; }
+  .unpaid-bill {
+      background: var(--bg);
+      margin-bottom: 15px;
+      border-radius: 8px;
+      border: 1px dashed #ff9900;
+  }
+
 </style>
 </head>
 <body data-theme="light">
@@ -498,9 +530,19 @@
         </div>
         <div class="muted" style="font-size:1.1em;">
           Celkový **Zůstatek**: <span id="totalBalance" style="font-weight:900; font-size:1.3em;">0 Kč</span>
+          <span id="upcomingPaymentsSum" class="upcoming-indicator" style="display:none;">
+            <i class="fa fa-exclamation-triangle"></i> K úhradě: <span id="upcomingAmountText"></span>
+          </span>
         </div>
       </div>
 
+      <div id="upcomingPaymentsDetail" class="unpaid-bill" style="display:none; margin-top: 15px;">
+        <p class="muted" style="padding:10px 12px; border-bottom:1px solid var(--border);">
+            <i class="fa fa-calendar-alt" style="color:#ff9900;"></i> **Trvalé platby k úhradě** v tomto období:
+        </p>
+        <div id="upcomingPaymentsList"></div>
+      </div>
+      
       <div class="table-wrap" style="overflow-x:auto;">
         <table class="main" id="mainTable">
           <thead>
@@ -553,6 +595,12 @@
 
   <section id="section-goals" style="display:none">
     <div class="card">
+        <h2><i class="fa fa-calendar-check" style="color:#ff9900;"></i> Trvalé Platby k Úhradě (BOD 1)</h2>
+        <div class="muted">Přehled stálých výdajů, kde můžete **vybrat, že je platba zaplacená**.</div>
+        <div id="recurringPaymentsGoalList" style="margin-top:10px"></div>
+    </div>
+    
+    <div class="card" style="margin-top:16px;">
       <h2><i class="fa fa-piggy-bank"></i> Spořicí Cíle</h2>
       <div class="muted">Sledujte svůj pokrok v ukládání peněz.</div>
       <div style="margin-top:12px">
@@ -569,8 +617,8 @@
 
   <section id="section-stats" style="display:none">
     <div class="card">
-      <h2><i class="fa fa-chart-pie"></i> Finanční Analýza</h2>
-      <div class="muted">Statistiky a souhrn pro aktuální období filtru (výše).</div>
+      <h2><i class="fa fa-chart-pie"></i> Finanční Analýza (BOD 2)</h2>
+      <div class="muted">Statistiky a souhrn pro aktuální období filtru (nastavené v sekci Účet).</div>
 
       <div class="stat-list" id="statCards">
         <div class="stat-card balance">
@@ -597,7 +645,7 @@
   
   <section id="section-history" style="display:none">
     <div class="card">
-        <h2><i class="fa fa-calendar-alt"></i> Měsíční Historie a Grafy (OPRAVA BOD 4)</h2>
+        <h2><i class="fa fa-calendar-alt"></i> Měsíční Historie a Grafy</h2>
         <div class="muted">Přehled hospodaření za minulých 12 měsíců.</div>
         <div id="historyList" class="history-list" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:15px; margin-top:15px;">
             </div>
@@ -606,7 +654,22 @@
 
   <section id="section-settings" style="display:none">
     <div class="card">
-      <h2><i class="fa fa-wrench"></i> Správa kategorií (OPRAVA BOD 5)</h2>
+      <h2><i class="fa fa-calendar-alt" style="color:#ff9900;"></i> Správa Trvalých Plateb (BOD 1)</h2>
+      <p class="muted">Nastavte pravidelné platby (paušály, předplatné), které se budou automaticky odečítat.</p>
+
+      <div style="margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;border:1px solid var(--border);padding:15px;border-radius:12px;background:var(--bg)">
+        <input type="text" id="newRecurringName" placeholder="Název platby (např. 'Netflix')" style="flex-grow:1"/>
+        <input type="number" id="newRecurringAmount" placeholder="Částka (Kč)"/>
+        <select id="newRecurringDay" style="flex-grow:0; min-width:unset; flex-basis:120px;"></select>
+        <select id="newRecurringCategory" style="flex-basis: 150px;"></select>
+        <button class="btn" onclick="addRecurringPayment()"><i class="fa fa-plus"></i> Přidat Platbu</button>
+      </div>
+      
+      <div id="recurringListManagement" style="margin-top:20px"></div>
+    </div>
+
+    <div class="card" style="margin-top:16px;">
+      <h2><i class="fa fa-wrench"></i> Správa kategorií</h2>
       <p class="muted">Přidejte nebo odstraňte kategorie pro přesnější přehled.</p>
       
       <div style="margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;border:1px solid var(--border);padding:15px;border-radius:12px;background:var(--bg)">
@@ -710,6 +773,25 @@
 
 <div class="card-copy-status" id="global-copy-status">Zkopírováno!</div>
 
+<div id="recurringModal" class="modal-overlay" style="display:none;">
+    <div class="modal-content">
+        <h2 id="modalRecurringTitle" style="margin-bottom:20px">Úprava Trvalé Platby</h2>
+        <div class="form-row">
+            <input type="text" id="modalRName" placeholder="Název platby" style="flex-grow:1"/>
+            <input type="number" id="modalRAmount" placeholder="Částka"/>
+            <select id="modalRDay" style="flex-grow:0; min-width:unset; flex-basis:120px;"></select>
+            <select id="modalRCategory"></select>
+        </div>
+        <p class="muted" style="margin-top:10px;">Poslední úhrada: <strong id="modalRLastPaid">Nezaplaceno</strong></p>
+
+        <div class="modal-footer" style="display:flex;justify-content:space-between; margin-top:20px;">
+            <button class="btn danger" id="modalRDeleteBtn"><i class="fa fa-trash"></i> Smazat</button>
+            <button class="btn" onclick="saveRecurringProfile()"><i class="fa fa-save"></i> Uložit Změny</button>
+        </div>
+        <button class="btn secondary" onclick="closeModal('recurringModal')" style="width:100%; margin-top:10px;"><i class="fa fa-times"></i> Zavřít</button>
+    </div>
+</div>
+
 
 <script>
 // PŮVODNÍ KÓD ZŮSTÁVÁ, OPRAVENÁ A ROZŠÍŘENÁ LOGIKA NÍŽE
@@ -723,12 +805,14 @@ const LS_CATEGORIES = 'finance_categories_v1';
 const LS_CURRENCY = 'finance_currency_v1';
 const LS_EXCHANGE_RATE = 'finance_exchange_rate_v1';
 const LS_CARDS = 'finance_cards_v2'; 
+const LS_RECURRING_PAYMENTS = 'finance_recurring_payments_v1'; // NOVÁ KONSTANTA
 
 let store = {
   transactions: [], 
   goals: [],        
   categories: [],   
   cards: [], 
+  recurringPayments: [], // NOVÉ: trvalé platby
   currency: 'CZK',
   exchangeRate: 1, 
 };
@@ -755,6 +839,16 @@ function loadStore(){
         id: c.id || Math.random().toString(36).substring(2, 9)
     }));
     else store.cards = [];
+    
+    // NAČTENÍ TRVALÝCH PLATEB
+    const rawR = localStorage.getItem(LS_RECURRING_PAYMENTS);
+    if(rawR) store.recurringPayments = JSON.parse(rawR).map(r => ({
+        ...r, 
+        id: r.id || Math.random().toString(36).substring(2, 9),
+        // Zajištění, že lastPaidDate je Date (nebo null)
+        lastPaidDate: r.lastPaidDate ? r.lastPaidDate : null 
+    }));
+    else store.recurringPayments = [];
 
 
     const rawC = localStorage.getItem(LS_CATEGORIES);
@@ -786,6 +880,7 @@ function loadStore(){
     store.transactions = [];
     store.goals = [];
     store.cards = []; 
+    store.recurringPayments = []; // Reset i pro nové pole
     store.categories = [ { name: 'Nezadáno', type: 'expense' } ];
     store.currency = 'CZK';
     store.exchangeRate = 1;
@@ -798,11 +893,14 @@ function saveStore(){
   localStorage.setItem(LS_CURRENCY, store.currency);
   localStorage.setItem(LS_EXCHANGE_RATE, store.exchangeRate.toFixed(4));
   localStorage.setItem(LS_CARDS, JSON.stringify(store.cards)); 
+  localStorage.setItem(LS_RECURRING_PAYMENTS, JSON.stringify(store.recurringPayments)); // ULOŽENÍ TRVALÝCH PLATEB
 }
 
 /* helpers */
 function $(id){return document.getElementById(id)}
-function closeModal(id){ $(id).style.display = 'none'; currentTransaction = null; currentGoal = null; }
+function closeModal(id){ $(id).style.display = 'none'; currentTransaction = null; currentGoal = null; currentRecurring = null; } // Přidána nová proměnná
+let currentRecurring = null;
+
 
 function formatDate(d){ 
     if(!d) return '';
@@ -824,7 +922,7 @@ function formatAmount(amount, currencyCode = store.currency){
         locale = 'cs-CZ';
     }
 
-    return new Intl.NumberFormat(locale, { style: 'currency', currency: code }).format(finalAmount);
+    return new Intl.NumberFormat(locale, { style: 'currency', currency: code, minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(finalAmount);
 }
 function todayShort(){ /* Funkce nebyla použita, ponecháno pro konzistenci */ }
 
@@ -842,6 +940,7 @@ function changeCurrency(){
     saveStore();
     applyFilter();
     renderGoals();
+    renderRecurringPaymentsGoalSection(); // Znovu vykreslit trvalé platby
     if(document.querySelector('.footer-nav button[data-section="stats"]').classList.contains('active')) computeStats();
     if(document.querySelector('.footer-nav button[data-section="history"]').classList.contains('active')) renderHistory();
 }
@@ -861,9 +960,12 @@ function showSection(e){
   
   if(sec === 'stats') computeStats();
   if(sec === 'cards') renderCards(); 
-  if(sec === 'goals') renderGoals();
+  if(sec === 'goals') { 
+    renderGoals();
+    renderRecurringPaymentsGoalSection(); // Zobrazení trvalých plateb v sekci Cíle
+  }
   if(sec === 'history') renderHistory();
-  if(sec === 'settings') renderCategories(); 
+  if(sec === 'settings') renderCategories(); renderRecurringPaymentsManagement(); // Render správy trvalých plateb
 }
 
 
@@ -931,18 +1033,33 @@ function renderMonthOptions() {
     applyMonthFilter(); 
 }
 
-/* SPRÁVA KATEGORIÍ (OPRAVA BOD 5) */
+/* SPRÁVA KATEGORIÍ */
 function updateCategorySelects() {
-    const selects = [$('transactionCategory'), $('modalTCategory')];
+    const selects = [$('transactionCategory'), $('modalTCategory'), $('newRecurringCategory'), $('modalRCategory')];
+    
+    // Pro trvalé platby potřebujeme jen výdajové kategorie
+    const expenseCategories = store.categories.filter(c => c.type === 'expense');
     
     selects.forEach(select => {
         if (!select) return; 
         
-        const isModal = select.id === 'modalTCategory';
+        const isModalT = select.id === 'modalTCategory';
+        const isRecurring = select.id.includes('RecurringCategory');
         
-        // Zjištění aktuálního typu pro filtrování
+        if (isRecurring) {
+            select.innerHTML = '';
+            expenseCategories.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c.name;
+                opt.textContent = c.name;
+                select.appendChild(opt);
+            });
+            return;
+        }
+
+        // Pro běžné transakce (závisí na typu transakce)
         let currentType;
-        if (isModal) {
+        if (isModalT) {
             currentType = $('modalTType')?.value || 'expense';
         } else {
             currentType = $('transactionType')?.value || 'expense';
@@ -951,7 +1068,6 @@ function updateCategorySelects() {
         const currentSelected = select.value;
         
         select.innerHTML = '';
-        
         const relevantCategories = store.categories.filter(c => c.type === currentType);
 
         if (relevantCategories.length === 0) {
@@ -1018,6 +1134,10 @@ function addCategory() {
     saveStore();
     $('newCategoryName').value = '';
     renderCategories();
+    // Aktualizovat i výběry trvalých plateb
+    updateCategorySelects();
+    renderRecurringPaymentsManagement();
+    renderRecurringPaymentsGoalSection();
 }
 
 function deleteCategory(index, event) {
@@ -1036,6 +1156,13 @@ function deleteCategory(index, event) {
                 t.category = 'Nezadáno'; // Převedení transakcí
             }
         });
+        // Převedení trvalých plateb
+        store.recurringPayments.forEach(r => {
+            if (r.category === catToDelete.name) {
+                r.category = 'Nezadáno'; 
+            }
+        });
+
 
         store.categories.splice(index, 1);
         saveStore();
@@ -1078,7 +1205,7 @@ function addTransaction(){
     renderMonthOptions(); 
 }
 
-/* BUDGET - transakční modal (OPRAVA BODU 1) */
+/* BUDGET - transakční modal */
 let currentTransaction = null;
 
 function updateModalCategorySelect(currentType, currentCategoryName) {
@@ -1347,147 +1474,261 @@ function addInvestmentFromModal(){
     }
 }
 
-
 /* ========================================================
-   SEKCE KARET - Logika (OPRAVA BODU 2)
+   TRVALÉ PLATBY - LOGIKA (BOD 1)
    ======================================================== */
 
-function addCard() {
-    const type = $('newCardType').value;
-    const number = $('newCardNumber').value.replace(/\s/g, '').trim();
-    const expiry = $('newCardExpiry').value.trim();
-    const cvv = $('newCardCVV').value.trim();
-    const owner = $('newCardOwner').value.trim();
-    
-    let issuer = 'Neznámá';
-    let issuerIcon = 'fa fa-credit-card';
-    let cardClassSuffix = 'amex-platinum'; // Default pro neznámé
+// Pomocná funkce pro naplnění výběru dnů v měsíci
+function fillRecurringDaySelects() {
+    const selects = [$('newRecurringDay'), $('modalRDay')];
+    selects.forEach(select => {
+        if (!select) return;
+        select.innerHTML = '';
+        for (let i = 1; i <= 31; i++) {
+            const opt = document.createElement('option');
+            opt.value = i;
+            opt.textContent = i + '. den v měsíci';
+            select.appendChild(opt);
+        }
+    });
+}
 
-    if (type === 'amex-platinum') {
-        issuer = 'AMERICAN EXPRESS';
-        issuerIcon = 'fab fa-cc-amex';
-        cardClassSuffix = 'amex-platinum';
-    } else if (type === 'amex-gold') {
-        issuer = 'AMERICAN EXPRESS';
-        issuerIcon = 'fab fa-cc-amex';
-        cardClassSuffix = 'amex-gold';
-    } else if (type === 'visa') {
-        issuer = 'VISA';
-        issuerIcon = 'fab fa-cc-visa';
-        cardClassSuffix = 'visa';
-    } else if (type === 'mastercard') {
-        issuer = 'MASTERCARD';
-        issuerIcon = 'fab fa-cc-mastercard';
-        cardClassSuffix = 'mastercard';
-    }
 
-    if (!number || !expiry || !cvv || !owner || number.length < 15 || !expiry.match(/^\d{2}\/\d{2}$/) || cvv.length < 3) {
-        alert('Vyplňte prosím kompletní a platné údaje karty (Číslo: 15+, Platnost: MM/YY, CVV: 3+).');
+function addRecurringPayment() {
+    const name = $('newRecurringName').value.trim();
+    const amount = parseFloat($('newRecurringAmount').value);
+    const dueDate = parseInt($('newRecurringDay').value);
+    const category = $('newRecurringCategory').value;
+
+    if (!name || isNaN(amount) || amount <= 0 || isNaN(dueDate)) {
+        alert('Vyplňte prosím název, platnou částku a den v měsíci.');
         return;
     }
 
-    const newCard = {
+    const newPayment = {
         id: Math.random().toString(36).substring(2, 9),
-        type: type,
-        issuer: issuer,
-        issuerIcon: issuerIcon,
-        number: number,
-        expiry: expiry,
-        cvv: cvv,
-        owner: owner.toUpperCase()
+        name: name,
+        amount: amount,
+        dueDate: dueDate,
+        category: category,
+        lastPaidDate: null, // Ukládáme jako string "YYYY-MM-DD" nebo null
     };
 
-    store.cards.push(newCard);
+    store.recurringPayments.push(newPayment);
     saveStore();
-    $('newCardNumber').value = '';
-    $('newCardExpiry').value = '';
-    $('newCardCVV').value = '';
-    $('newCardOwner').value = '';
-    renderCards();
+
+    $('newRecurringName').value = '';
+    $('newRecurringAmount').value = '';
+
+    renderRecurringPaymentsManagement();
+    renderRecurringPaymentsGoalSection();
+    applyFilter(); // Aktualizace přehledu
 }
 
-function copyCardData(id, type) {
-    let copyText = '';
-    let statusMessage = '';
+function renderRecurringPaymentsManagement() {
+    fillRecurringDaySelects();
+    updateCategorySelects(); // Zajistí, že kategorie jsou načteny
     
-    const card = store.cards.find(c => c.id === id);
-    if (!card) return;
-
-    if (type === 'number') {
-        copyText = card.number;
-        statusMessage = 'Číslo karty zkopírováno!';
-    } else if (type === 'expiry') {
-        copyText = card.expiry;
-        statusMessage = 'Platnost karty zkopírována!';
-    } else if (type === 'cvv') {
-        copyText = card.cvv;
-        statusMessage = 'CVV/CVC kód zkopírován!';
-    } else {
-        return;
-    }
-
-    // Moderní API pro kopírování do schránky
-    navigator.clipboard.writeText(copyText).then(() => {
-        const statusEl = $('global-copy-status');
-        statusEl.textContent = statusMessage;
-        statusEl.classList.add('show');
-        
-        setTimeout(() => {
-            statusEl.classList.remove('show');
-        }, 1500);
-    }).catch(err => {
-        alert('Chyba při kopírování. Povolte prosím přístup ke schránce.');
-        console.error('Kopírování selhalo:', err);
-    });
-}
-
-
-function renderCards() {
-    const list = $('cardsList');
+    const list = $('recurringListManagement');
     list.innerHTML = '';
 
-    if (store.cards.length === 0) {
-        list.innerHTML = '<div class="muted" style="margin-top:10px; grid-column: 1 / -1;">Zatím nebyly přidány žádné karty.</div>';
+    if (store.recurringPayments.length === 0) {
+        list.innerHTML = '<div class="muted">Zatím nebyly přidány žádné trvalé platby.</div>';
         return;
     }
 
-    store.cards.forEach(c => {
-        const cardDiv = document.createElement('div');
-        const cardClass = `${c.type}-card`; // Využití nových CSS tříd
-        cardDiv.className = `amex-card ${cardClass}`;
-        
-        // Formátování čísla pro zobrazení (např. 4444 4444 4444 4444)
-        const visibleNumber = c.number.match(/.{1,4}/g).join(' '); 
+    store.recurringPayments.forEach(r => {
+        const item = document.createElement('div');
+        item.className = 'card recurring-payment-card';
+        item.style.marginBottom = '10px';
+        item.style.cursor = 'pointer';
+        item.onclick = () => openRecurringModal(r.id);
 
-        cardDiv.innerHTML = `
-            <div class="amex-card-header">
-                <div class="card-issuer">${c.issuer}</div>
-                <div class="amex-logo"><i class="${c.issuerIcon}"></i></div>
+        item.innerHTML = `
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+                <div style="font-weight:700; color:var(--text);">${r.name}</div>
+                <div style="font-weight:700; color:var(--danger);">${formatAmount(r.amount)}</div>
             </div>
-            <div class="card-chip"></div>
-            <div class="card-number">
-                <span>${visibleNumber}</span>
-                <button class="card-copy-btn" onclick="copyCardData('${c.id}', 'number'); event.stopPropagation();"><i class="fa fa-copy"></i></button>
-            </div>
-            <div class="card-details">
-                <div class="card-owner-info">
-                    <div class="muted" style="opacity:0.8; font-size:10px;">Držitel karty</div>
-                    <div class="card-owner">${c.owner}</div>
-                    <div style="font-size:10px; margin-top:5px; opacity:0.8;">CVV: ${c.cvv} <button class="card-copy-btn" onclick="copyCardData('${c.id}', 'cvv'); event.stopPropagation();"><i class="fa fa-copy"></i></button></div>
-                </div>
-                <div class="card-valid-thru">
-                    Platnost do<br><strong>${c.expiry}</strong> 
-                    <button class="card-copy-btn" onclick="copyCardData('${c.id}', 'expiry'); event.stopPropagation();"><i class="fa fa-copy"></i></button>
-                </div>
+            <div class="muted" style="margin-top:5px; font-size:0.9em;">
+                Den splatnosti: ${r.dueDate}. | Kategorie: ${r.category}
             </div>
         `;
+        list.appendChild(item);
+    });
+}
+
+function openRecurringModal(id) {
+    currentRecurring = store.recurringPayments.find(r => r.id === id);
+    if (!currentRecurring) return;
+
+    fillRecurringDaySelects();
+    updateCategorySelects();
+
+    $('modalRecurringTitle').innerHTML = `<i class="fa fa-edit"></i> Úprava trvalé platby: ${currentRecurring.name}`;
+    $('modalRName').value = currentRecurring.name;
+    $('modalRAmount').value = currentRecurring.amount;
+    $('modalRDay').value = currentRecurring.dueDate;
+    $('modalRCategory').value = currentRecurring.category;
+    $('modalRLastPaid').textContent = currentRecurring.lastPaidDate ? formatDate(currentRecurring.lastPaidDate) : 'Nezaplaceno';
+
+    $('modalRDeleteBtn').onclick = () => deleteRecurringPayment(currentRecurring.id);
+    
+    $('recurringModal').style.display = 'flex';
+}
+
+function saveRecurringProfile() {
+    if (!currentRecurring) return;
+
+    const name = $('modalRName').value.trim();
+    const amount = parseFloat($('modalRAmount').value);
+    const dueDate = parseInt($('modalRDay').value);
+    const category = $('modalRCategory').value;
+
+    if (!name || isNaN(amount) || amount <= 0 || isNaN(dueDate)) {
+        alert('Vyplňte prosím název, platnou částku a den v měsíci.');
+        return;
+    }
+
+    const index = store.recurringPayments.findIndex(r => r.id === currentRecurring.id);
+    if (index !== -1) {
+        store.recurringPayments[index] = {
+            ...store.recurringPayments[index],
+            name: name,
+            amount: amount,
+            dueDate: dueDate,
+            category: category,
+        };
+    }
+
+    saveStore();
+    closeModal('recurringModal');
+    renderRecurringPaymentsManagement();
+    renderRecurringPaymentsGoalSection();
+    applyFilter();
+}
+
+function deleteRecurringPayment(id) {
+    if (confirm('Opravdu chcete tuto trvalou platbu smazat?')) {
+        store.recurringPayments = store.recurringPayments.filter(r => r.id !== id);
+        saveStore();
+        closeModal('recurringModal');
+        renderRecurringPaymentsManagement();
+        renderRecurringPaymentsGoalSection();
+        applyFilter();
+    }
+}
+
+// Zobrazení v sekci Cíle a úhrada
+function renderRecurringPaymentsGoalSection() {
+    const list = $('recurringPaymentsGoalList');
+    list.innerHTML = '';
+    
+    // Získání aktuálně nezaplacených plateb pro aktuální měsíc (na základě filtru)
+    const upcoming = getUpcomingPayments(new Date($('filterFrom').value), new Date($('filterTo').value));
+    
+    if (upcoming.length === 0) {
+        list.innerHTML = '<div class="muted">Žádné trvalé platby k úhradě v tomto období.</div>';
+        return;
+    }
+    
+    upcoming.forEach(r => {
+        const item = document.createElement('div');
+        item.className = 'goal-item card recurring-payment-card';
+        item.style.marginBottom = '10px';
         
-        list.appendChild(cardDiv);
+        item.innerHTML = `
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+                <div style="font-size:1.1em; font-weight:700">${r.name}</div>
+                <div style="font-weight:700; color:var(--danger);">${formatAmount(r.amount)}</div>
+            </div>
+            <div class="muted" style="margin-top:5px; font-size:0.9em;">
+                Splatnost: ${r.dueDate}. den | Kategorie: ${r.category}
+            </div>
+            <div style="margin-top:15px; text-align:right;">
+                <button class="btn secondary action-small" onclick="openRecurringModal('${r.id}')"><i class="fa fa-edit"></i> Upravit Profil</button>
+                <button class="btn" style="background:var(--danger);" onclick="markRecurringPaymentAsPaid('${r.id}')"><i class="fa fa-check"></i> **Zaplatit** (${formatAmount(r.amount)})</button>
+            </div>
+        `;
+        list.appendChild(item);
+    });
+}
+
+function markRecurringPaymentAsPaid(id) {
+    const payment = store.recurringPayments.find(r => r.id === id);
+    if (!payment) return;
+
+    if (!confirm(`Opravdu chcete zaznamenat úhradu ${formatAmount(payment.amount)} za "${payment.name}"? Tímto se platba **odečte** z Vašeho zůstatku.`)) {
+        return;
+    }
+    
+    const today = new Date().toISOString().slice(0, 10);
+    
+    // 1. Vytvoření transakce
+    const newTransaction = {
+        id: Math.random().toString(36).substring(2, 9),
+        date: today,
+        desc: `Trvalá platba: ${payment.name}`,
+        amount: payment.amount, 
+        type: 'expense',
+        category: payment.category,
+    };
+    store.transactions.push(newTransaction);
+
+    // 2. Aktualizace lastPaidDate (důležité pro určení, že je uhrazeno v tomto měsíci)
+    payment.lastPaidDate = today; 
+
+    saveStore();
+    
+    alert(`Trvalá platba za "${payment.name}" byla uhrazena a odečtena z rozpočtu.`);
+    
+    renderRecurringPaymentsGoalSection();
+    applyFilter();
+}
+
+
+// ZÍSKÁNÍ NEUHRAZENÝCH PLATEB V RÁMCI AKTUÁLNÍHO FILTRU
+function getUpcomingPayments(filterFrom, filterTo) {
+    if (!filterFrom || !filterTo) return [];
+    
+    const fDate = new Date(filterFrom);
+    const tDate = new Date(filterTo);
+    
+    // Standardně filtrujeme po měsících. Použijeme konec filtru (filterTo) jako referenční datum.
+    const filterMonth = tDate.getMonth();
+    const filterYear = tDate.getFullYear();
+    
+    return store.recurringPayments.filter(r => {
+        const lastPaidDate = r.lastPaidDate ? new Date(r.lastPaidDate) : null;
+        const dueDay = r.dueDate;
+        
+        // Vytvoření data splatnosti pro aktuální měsíc filtru
+        // Ošetření, že den 31 neexistuje v únoru atp. (převedeno na poslední den měsíce)
+        const dueInFilterMonth = new Date(filterYear, filterMonth, dueDay);
+        
+        // Zkontrolujeme, zda datum splatnosti spadá do rozsahu filtru
+        const isDueInFilterPeriod = dueInFilterMonth >= fDate && dueInFilterMonth <= tDate;
+
+        if (isDueInFilterPeriod) {
+            // Je splatná v tomto měsíci (období)
+            if (lastPaidDate) {
+                // Poslední úhrada byla v referenčním měsíci filtru?
+                const lastPaidMonth = lastPaidDate.getMonth();
+                const lastPaidYear = lastPaidDate.getFullYear();
+                
+                // Pokud je poslední úhrada ve stejném měsíci filtru, je již uhrazená
+                if (lastPaidMonth === filterMonth && lastPaidYear === filterYear) {
+                    return false; // Již zaplaceno pro toto období
+                }
+            }
+            return true; // Je splatná a neuhrazená
+        }
+        
+        return false; // Nespadá do období
     });
 }
 
 
-/* Ostatní funkce (Tabulka, Filtry, Statistiky, Historie, Export/Import) - Ponechány */
+/* Ostatní funkce (Tabulka, Filtry, Statistiky, Historie, Export/Import) - Upraveno */
 let currentTransactions = []; 
 
 function renderTransactionTable(transactions){
@@ -1495,6 +1736,35 @@ function renderTransactionTable(transactions){
     const tbody = $('tableBody');
     tbody.innerHTML = '';
     let totalBalance = 0;
+
+    // 1. Získání nezaplacených trvalých plateb
+    const upcomingPayments = getUpcomingPayments($('filterFrom').value, $('filterTo').value);
+    let upcomingPaymentsTotal = upcomingPayments.reduce((sum, p) => sum + p.amount, 0);
+
+    // 2. Vykreslení detailu nezaplacených plateb (pod hlavním panelem)
+    const upcomingDetail = $('upcomingPaymentsDetail');
+    const upcomingList = $('upcomingPaymentsList');
+    upcomingList.innerHTML = '';
+    
+    if (upcomingPayments.length > 0) {
+        upcomingDetail.style.display = 'block';
+        upcomingPayments.forEach(r => {
+             const item = document.createElement('div');
+             item.className = 'upcoming-item';
+             item.innerHTML = `
+                 <div>
+                     <i class="fa fa-file-invoice" style="color:#ff9900;"></i> 
+                     <strong>${r.name}</strong> 
+                     <span class="muted" style="font-size:0.9em;">(Splatnost ${r.dueDate}. den, Kat: ${r.category})</span>
+                 </div>
+                 <div style="font-weight:700; color:var(--danger);">${formatAmount(r.amount)}</div>
+             `;
+             upcomingList.appendChild(item);
+        });
+    } else {
+        upcomingDetail.style.display = 'none';
+    }
+
 
     transactions.forEach((t) => {
         const tr = document.createElement('tr');
@@ -1534,10 +1804,27 @@ function renderTransactionTable(transactions){
         tbody.appendChild(tr);
     });
     
+    // 3. Vykreslení celkového zůstatku a indikátoru
     const balanceEl = $('totalBalance');
+    const upcomingSumEl = $('upcomingPaymentsSum');
+    const upcomingAmountTextEl = $('upcomingAmountText');
+    
     balanceEl.textContent = formatAmount(totalBalance); 
     balanceEl.style.color = totalBalance >= 0 ? 'var(--accent2)' : 'var(--danger)';
     
+    // Oranžový indikátor trvalých plateb
+    if (upcomingPaymentsTotal > 0) {
+        upcomingAmountTextEl.textContent = formatAmount(upcomingPaymentsTotal);
+        upcomingSumEl.style.display = 'inline-flex';
+        // Změna barvy zůstatku na žlutou, pokud je zůstatek > 0, ale po odečtení by byl záporný
+        if (totalBalance > 0 && (totalBalance - upcomingPaymentsTotal) < 0) {
+            balanceEl.style.color = '#ff9900';
+        }
+    } else {
+        upcomingSumEl.style.display = 'none';
+    }
+
+
     document.querySelector('#mainTable thead th:nth-child(4)').textContent = 'Částka (' + store.currency + ')';
 }
 
@@ -1570,6 +1857,9 @@ function applyFilter(){
     }
     
     renderTransactionTable(filtered);
+    // Aktualizovat i sekci cílů s platbami, které závisí na filtru
+    if(document.querySelector('.footer-nav button[data-section="goals"]').classList.contains('active')) renderRecurringPaymentsGoalSection();
+    
     // Spustíme computeStats pouze pokud je sekce aktivní
     if(document.querySelector('.footer-nav button[data-section="stats"]').classList.contains('active')) computeStats();
 }
@@ -1765,6 +2055,7 @@ function importAllJSON(event){
                 localStorage.setItem(LS_GOALS, JSON.stringify(importedStore.goals || []));
                 localStorage.setItem(LS_CATEGORIES, JSON.stringify(importedStore.categories || []));
                 localStorage.setItem(LS_CARDS, JSON.stringify(importedStore.cards || [])); 
+                localStorage.setItem(LS_RECURRING_PAYMENTS, JSON.stringify(importedStore.recurringPayments || [])); // Nový import
                 localStorage.setItem(LS_CURRENCY, importedStore.currency || 'CZK');
                 localStorage.setItem(LS_EXCHANGE_RATE, importedStore.exchangeRate || 1);
                 
@@ -1811,6 +2102,7 @@ function redrawAll(){
   renderCategories(); 
   renderGoals(); 
   renderCards(); 
+  renderRecurringPaymentsManagement(); // NOVÉ: naplnění dnů a managemnt
   
   // Zobrazení defaultní sekce a aktivace nav tlačítka
   document.querySelectorAll('main section').forEach(s => s.style.display = 'none');
