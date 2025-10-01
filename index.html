@@ -3,30 +3,30 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
-<title>Finanční Plánovač - Rozpočet a Investice</title>
+<title>Finanční Portál - Osobní Rozpočet a Investice</title>
 
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
 <style>
   /* ========================================================
-     BANKING THEME VARIABLES - Hlavní změna je zde
+     BANKING THEME VARIABLES - MODIFIKOVÁNO pro Revolut vzhled
      ======================================================== */
   :root{
-    --bg: #f0f2f5; /* Světle šedé/Bankovní pozadí */
+    --bg: #f0f2f5; /* Světle šedé pozadí */
     --card: #ffffff;
-    --muted: #6c757d; /* Mírná šedá */
+    --muted: #6c757d; 
     --accent: #007bff; /* Primární bankovní modrá (Safír) */
     --accent2: #28a745; /* Zelená pro příjmy/zisky */
     --glass: rgba(255,255,255,0.7);
     --border: rgba(0,0,0,0.08);
-    --text: #212529; /* Tmavě šedá pro lepší čitelnost */
+    --text: #212529; 
     --danger: #dc3545; /* Červená pro výdaje/ztráty */
-    --shadow: 0 4px 15px rgba(0,123,255,0.1); /* Modřejší stín */
+    --shadow: 0 6px 20px rgba(0,123,255,0.1); /* Modřejší, výraznější stín */
   }
-  /* ÚPRAVA ČERNÉHO REŽIMU - Více profesionální a méně kontrastní */
+  /* ÚPRAVA ČERNÉHO REŽIMU */
   [data-theme='dark']{
-    --bg: #1c2128; /* Tmavě šedé/Bankovní tmavé pozadí */
+    --bg: #1c2128; /* Tmavé pozadí */
     --card: #282d35; /* Tmavší karta */
     --muted: #adb5bd;
     --accent: #4da6ff; /* Světlejší bankovní modrá */
@@ -35,81 +35,95 @@
     --border: rgba(255,255,255,0.12);
     --text: #f8f9fa;
     --danger: #ff6b6b;
-    --shadow: 0 4px 15px rgba(0,0,0,0.4); 
+    --shadow: 0 6px 20px rgba(0,0,0,0.4); 
   }
 
+  /* RESET A ZÁKLADNÍ TYPOGRAFIE */
   *{box-sizing:border-box;margin:0;padding:0}
-  /* Typografie pro bankovní vzhled - Inter je OK, přidáme robustnost */
   body{
     font-family: 'Inter', "Segoe UI", Tahoma, sans-serif;
-    background: var(--bg); /* Odstraníme gradient */
+    background: var(--bg); 
     color: var(--text);
     padding-bottom:40px;
-    transition:all .3s ease-in-out; /* Plynulejší přechod */
+    transition:all .3s ease-in-out; 
     position:relative;
     overflow-x:hidden;
     touch-action: pan-y;
   }
-  /* Odstranění vesmírného pozadí - Starfield zůstane jen jako jemný efekt */
   [data-theme='dark'] body{ background: var(--bg); } 
 
-  /* Starfield zůstává, ale s menší viditelností v dark mode */
-  #starfield {
-    position: fixed; left: 0; top: 0; width: 100%; height: 100%;
-    pointer-events: none; z-index: 0; opacity: 0.05; transition: opacity 0.4s ease; /* Ztlumeno */
-    background: radial-gradient(circle at 10% 10%, rgba(77, 166, 255, 0.05) 0%, rgba(0,0,0,0) 60%); /* Jemný modrý nádech */
-  }
+  /* Starfield ztlumení */
+  #starfield { opacity: 0.05; transition: opacity 0.4s ease; }
   [data-theme='dark'] #starfield { opacity: 0.1; }
 
   /* Záhlaví - Profesionální a čisté */
   header{
-    position: sticky; top: 0; z-index: 10; /* Sticky hlavička */
+    position: sticky; top: 0; z-index: 10; 
     background: var(--card); 
-    border-bottom: 2px solid var(--accent); /* Podtržení bankovní barvou */
-    padding:20px 18px; 
+    border-bottom: 3px solid var(--accent); /* Výraznější podtržení */
+    padding:16px 18px; /* Menší svislý padding */
     display:flex; gap:12px; align-items:center; justify-content:space-between;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.05); /* Jemný stín */
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05); 
     color: var(--text);
   }
-  [data-theme='dark'] header{ background: var(--card); border-bottom-color: var(--accent); }
 
-  .title h1{ font-size:22px; margin-bottom:4px; font-weight:900; }
-  .title .sub{ font-size:13px; color:var(--muted); font-weight:500; }
+  .title h1{ font-size:20px; margin-bottom:2px; font-weight:800; }
+  .title .sub{ font-size:12px; color:var(--muted); font-weight:500; }
 
-  .wrap{max-width:1200px;margin:24px auto;padding:0 18px; position:relative; z-index:5}
-
-  /* Karta - zaoblenější, s lepším stínem */
+  /* ========================================================
+     3. ROVINY A RESPONZIVITA - Zajištění stejné roviny
+     ======================================================== */
+  .wrap{max-width:1200px;margin:20px auto;padding:0 12px; position:relative; z-index:5} /* Menší padding na mobilu */
   .card{
     background:var(--card); border-radius:16px; /* Více zaoblené */
     padding:20px;
-    box-shadow: var(--shadow); /* Použijeme proměnnou stínu */
+    box-shadow: var(--shadow); 
     border:1px solid var(--border);
     transition: transform .25s ease, box-shadow .25s ease, background .3s;
-    backdrop-filter: blur(8px);
-    overflow: hidden; /* Důležité pro bankovní vzhled */
+    overflow: hidden; 
   }
   .card + .card{ margin-top:16px }
-  .card:hover{ transform: none; box-shadow:0 8px 30px rgba(0,123,255,0.15); } /* Stabilní */
-  [data-theme='dark'] .card:hover{ box-shadow:0 8px 30px rgba(0,0,0,0.5); }
+  .stat-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 12px;
+    margin-top: 16px;
+  }
 
+  /* TOPBAR A FILTRY */
+  .topbar{display:flex;flex-direction:column;gap:16px;margin-bottom:16px}
+  .filter-bar{display:flex;gap:12px;align-items:center; flex-wrap:wrap;}
+  .filter-item{display:flex;gap:8px;align-items:center; padding:8px 12px; border-radius:10px; background:var(--bg)}
+  .form-row{ display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-top:12px; }
 
-  /* Navigace - Tablet styl */
+  /* ========================================================
+     1. POSUVNÁ NAVIGACE (RADEK)
+     ======================================================== */
   .nav{ 
-    display:flex; gap:8px; 
-    background:var(--bg); /* Aby vynikla na kartě */
+    display:flex; 
+    gap:8px; 
+    background:var(--bg);
     padding:6px; 
     border-radius:12px; 
     box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+    /* KLÍČOVÉ PRO POSUV */
+    overflow-x: auto; 
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch; /* iOS plynulé scroll */
+    scrollbar-width: none; /* Skryje scrollbar */
   }
+  .nav::-webkit-scrollbar { display: none; } /* Skryje scrollbar pro Webkit */
+  
   .nav button{ 
     background:transparent; 
-    border:none; /* Odstraníme border */
+    border:none; 
     padding:10px 16px; 
     border-radius:10px; 
     cursor:pointer; 
     color:var(--muted); 
     font-weight:700; 
     transition: all .2s;
+    min-width: max-content; /* Zabrání zmenšení tlačítek */
   }
   .nav button.active{ 
     background:var(--accent); 
@@ -118,123 +132,164 @@
     transform: translateY(-1px);
   }
   [data-theme='dark'] .nav{ background: #1f242c; }
-  [data-theme='dark'] .nav button.active{ background:var(--accent); }
 
-  /* Formulářové prvky - čisté, bez průhlednosti */
+
+  /* Formuláře, Tlačítka, Tabulky - Vizuál Revolut */
   input[type=text], input[type=date], input[type=number], select, textarea{
     padding:12px 14px; 
     border-radius:10px; 
     border:1px solid var(--border); 
     min-width:180px; 
-    background:var(--bg); /* Lehce odlišné pozadí pro input */
+    background:var(--bg); 
     color:var(--text);
     box-shadow: inset 0 1px 2px rgba(0,0,0,0.05);
+    flex-grow: 1; /* Pomůže s responzivitou */
   }
-  [data-theme='dark'] input[type=text], [data-theme='dark'] input[type=date], [data-theme='dark'] input[type=number], [data-theme='dark'] select, [data-theme='dark'] textarea{
-    background: #343a40; /* Tmavší input */
-    border-color: rgba(255,255,255,0.15);
-  }
-
-  /* Tlačítka - solidní, s lehkým efektem */
   .btn{ 
-    display:inline-flex; gap:8px; align-items:center; 
     padding:12px 18px; 
     border-radius:10px; 
-    border:none; 
     background:var(--accent); 
-    color:#fff; 
-    cursor:pointer; 
     font-weight:700; 
-    transition: background .2s, transform .1s;
+    transition: background .2s, transform .1s, box-shadow .2s;
+    box-shadow: 0 2px 4px rgba(0,123,255,0.2);
   }
-  .btn:hover{ background: #0069d9; transform: translateY(-1px); }
-  .btn.secondary{ 
-    background:var(--card); 
-    color:var(--text); 
-    border:1px solid var(--muted); 
-    box-shadow: none;
-  }
-  .btn.secondary:hover{ background:var(--bg); border-color:var(--accent); color:var(--accent); }
-  .btn.danger{ background:var(--danger); }
-  .btn.danger:hover{ background: #c82333; }
-  .btn.income{ background:var(--accent2); }
-  .btn.income:hover{ background: #218838; }
+  .btn:hover{ background: #0069d9; transform: translateY(-1px); box-shadow: 0 4px 8px rgba(0,123,255,0.3); }
 
   /* Tabulka - čistá a přehledná */
-  table.main thead th, table.settings thead th{ 
+  .table-wrap{ overflow-x: auto; margin-top:16px; }
+  table.main{ width: 100%; min-width: 600px; border-collapse: collapse; } 
+  table.main thead th{ 
     text-align:left; padding:15px 12px; 
     background:var(--accent); 
     color:#fff; 
     font-weight:800; 
-    font-size:1em; 
+    font-size:0.9em; 
     border-right:1px solid rgba(255,255,255,0.1);
   }
-  table.main tbody td, table.settings tbody td{ 
-    padding:12px; 
-    border-bottom:1px solid var(--border); 
-    vertical-align:middle; 
-    color:var(--text);
+  table.main tbody td{ padding:12px; border-bottom:1px solid var(--border); vertical-align:middle; }
+  .action-small{ padding: 8px 12px; font-size: 0.8em; }
+
+  /* ========================================================
+     4. SPRÁVA KATEGORIÍ - Vylepšený Tag vzhled
+     ======================================================== */
+  .category-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-radius: 20px; /* Pilulka tvar */
+    font-weight: 600;
+    font-size: 0.9em;
+    cursor: default;
+    transition: all .2s;
+    border: 1px solid transparent;
   }
-  table.main tr:nth-child(even) td{ background:rgba(0,0,0,0.02); } /* Lehké prokládání */
-  [data-theme='dark'] table.main tr:nth-child(even) td{ background:rgba(255,255,255,0.02); }
-  
-  table.main tr:hover td, table.settings tr:hover td{ background:rgba(0,123,255,0.05); }
-  [data-theme='dark'] table.main tr:hover td, [data-theme='dark'] table.settings tr:hover td{ background:rgba(77,166,255,0.1); }
-
-  .badge{ border-radius:4px; font-size:0.85em; } /* Bankovnější rozměry */
-  .badge.danger{ background:rgba(220,53,69,0.1); color:var(--danger); }
-  .badge.income{ background:rgba(40,167,69,0.1); color:var(--accent2); }
-  .badge.info{ background:rgba(0,123,255,0.1); color:var(--accent); } 
-
-  /* Statistiky - čisté, s barevnými linkami */
-  .stat-card{ 
-    padding:15px; 
-    border-radius:10px; 
-    background:var(--bg); /* Změna pozadí, aby se odlišilo od karty */
-    border:none; 
-    border-left:5px solid var(--accent); /* Bankovní linka */
-    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+  .category-tag.expense { 
+    background: rgba(220,53,69,0.15); 
+    color: var(--danger);
+    border-color: rgba(220,53,69,0.25);
   }
-  [data-theme='dark'] .stat-card{ background: #343a40; }
-
-  .stat-card.income{ border-left-color:var(--accent2); }
-  .stat-card.expense{ border-left-color:var(--danger); }
-  .stat-card.balance{ border-left-color:var(--accent); }
-  .stat-card .value{ font-size:1.8em; font-weight:900; }
-
-  /* Cíl - progress bar - moderní look */
-  .goal-item{ 
-    padding:15px; 
-    border-radius:12px; 
-    border:1px solid var(--border); 
-    background:var(--card); 
-    cursor:pointer; 
-    transition:box-shadow .2s; 
-    margin-top:10px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+  .category-tag.income { 
+    background: rgba(40,167,69,0.15); 
+    color: var(--accent2);
+    border-color: rgba(40,167,69,0.25);
   }
-  .goal-item:hover{ box-shadow: 0 4px 12px rgba(0,123,255,0.1); }
-  [data-theme='dark'] .goal-item:hover{ box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
-  .progress-bar{ background:var(--border); height:10px; border-radius:5px; margin-top:8px; }
-  .progress-fill{ height:100%; background:var(--accent2); border-radius:5px; transition:width 0.4s ease-in-out; }
+  .category-tag i.fa-times {
+    cursor: pointer;
+    font-size: 0.9em;
+    opacity: 0.7;
+  }
+  .category-tag i.fa-times:hover { opacity: 1; }
 
-  /* MODAL - čistý, s důrazem na obsah */
+  /* ========================================================
+     2. PŘEHLED MĚSÍCŮ S GRAFY
+     ======================================================== */
+  .history-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+      margin-top: 16px;
+  }
+  .history-month-card {
+      background: var(--card);
+      border-radius: 12px;
+      padding: 15px;
+      border: 1px solid var(--border);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      transition: all .2s;
+  }
+  .history-month-card h4 {
+      margin-bottom: 12px;
+      font-weight: 800;
+      color: var(--accent);
+  }
+  .history-stat-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      font-size: 0.9em;
+      margin-bottom: 15px;
+  }
+  .chart-container {
+      height: 100px;
+      display: flex;
+      gap: 8px;
+      align-items: flex-end;
+      padding-top: 5px;
+  }
+  .chart-bar-wrap {
+      width: 50%;
+      height: 100%;
+      display: flex;
+      flex-direction: column-reverse;
+      align-items: center;
+      position: relative;
+  }
+  .chart-bar {
+      width: 100%;
+      background: var(--border);
+      border-radius: 4px 4px 0 0;
+      transition: height 0.5s ease-out;
+      position: relative;
+  }
+  .chart-bar.income { background: var(--accent2); }
+  .chart-bar.expense { background: var(--danger); }
+  .chart-label {
+      font-size: 0.75em;
+      color: var(--muted);
+      position: absolute;
+      top: -15px;
+  }
+
+
+  /* MEDIA QUERIES pro mobilní zařízení */
+  @media(max-width:992px){ 
+    .wrap{ margin-top:16px; padding:0 12px; }
+    header{ padding:12px 12px; }
+    .title h1{ font-size:18px; }
+    .title .sub{ display:none; } /* Skryjeme sub-titulek na mobilu */
+    .filter-item{ flex-grow:1; } /* Filtry zaberou celou šířku */
+    .filter-bar{ flex-direction:column; align-items:stretch; }
+    input[type=date], select{ min-width:unset; }
+    .topbar > div:last-child{ flex-direction:column; align-items:stretch; }
+    .stat-list { grid-template-columns: 1fr; } /* Statistiky pod sebe */
+  }
+
+  /* MODAL */
+  .modal-overlay{
+    position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:99;
+    display:flex;justify-content:center;align-items:center;
+  }
   .modal-content{
     background:var(--card); border-radius:16px; 
     padding:30px; 
-    max-width:550px; 
+    max-width:90%; /* Zajištění mobilního zobrazení */
+    width:550px; 
     box-shadow:0 30px 60px rgba(0,0,0,0.4); 
+    max-height: 90vh;
+    overflow-y: auto;
   }
   .modal-footer{ border-top:1px solid var(--border); padding-top:20px; margin-top:20px; }
-
-  /* Ostatní styly */
-  .topbar{display:flex;gap:16px;align-items:center;justify-content:space-between;margin-bottom:16px}
-  .form-row{ display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-top:12px; }
-
-  @media(max-width:992px){ /* Změna breakpointu */
-    .topbar{ flex-direction:column; gap:10px; align-items:stretch }
-    .form-row{ flex-direction:column; align-items:stretch; gap:10px; }
-  }
 </style>
 </head>
 <body data-theme="light">
@@ -254,7 +309,7 @@
             <option value="CZK">Kč (CZK)</option>
             <option value="EUR">€ (EUR)</option>
         </select>
-        <div id="todayShort" class="muted" style="font-weight:600;"></div>
+        <div id="todayShort" class="muted" style="font-weight:600; display:none;"></div>
         <button class="btn secondary" onclick="toggleTheme()" id="themeBtn"><i class="fa fa-moon"></i> Režim</button>
       </div>
     </div>
@@ -264,20 +319,22 @@
 <main class="wrap">
 
   <div class="topbar">
-    <div class="nav card" role="navigation" aria-label="Sekce">
-      <button class="active" data-section="budget" onclick="showSection(event)"><i class="fa fa-wallet"></i> Účet</button>
-      <button data-section="goals" onclick="showSection(event)"><i class="fa fa-piggy-bank"></i> Spoření & Investice</button>
-      <button data-section="stats" onclick="showSection(event)"><i class="fa fa-chart-line"></i> Analýza</button>
-      <button data-section="history" onclick="showSection(event)"><i class="fa fa-history"></i> Přehled měsíců</button>
-      <button data-section="settings" onclick="showSection(event)"><i class="fa fa-cog"></i> Správa</button>
+    <div class="nav card" role="navigation" aria-label="Sekce" style="padding: 0; background: none; box-shadow: none; border: none;">
+      <div class="nav" style="box-shadow: var(--shadow); border: 1px solid var(--border); padding: 8px;">
+        <button class="active" data-section="budget" onclick="showSection(event)"><i class="fa fa-wallet"></i> Účet</button>
+        <button data-section="goals" onclick="showSection(event)"><i class="fa fa-piggy-bank"></i> Spoření & Investice</button>
+        <button data-section="stats" onclick="showSection(event)"><i class="fa fa-chart-line"></i> Analýza</button>
+        <button data-section="history" onclick="showSection(event)"><i class="fa fa-history"></i> Přehled měsíců</button>
+        <button data-section="settings" onclick="showSection(event)"><i class="fa fa-cog"></i> Správa</button>
+      </div>
     </div>
 
-    <div style="display:flex;gap:12px;align-items:center; flex-wrap:wrap">
-      <div class="card" style="display:flex;gap:8px;align-items:center; padding:10px 15px; border-radius:10px; background:var(--bg)">
+    <div class="filter-bar">
+      <div class="filter-item">
         <div class="muted">Měsíc:</div>
         <select id="monthSelect" onchange="applyMonthFilter()" style="min-width:160px"></select>
       </div>
-      <div class="card" style="display:flex;gap:8px;align-items:center; padding:10px 15px; border-radius:10px; background:var(--bg)">
+      <div class="filter-item">
         <div class="muted">Období: Od</div>
         <input type="date" id="filterFrom" style="min-width:120px"/>
         <div class="muted">Do</div>
@@ -289,11 +346,9 @@
   
   <section id="section-budget">
     <div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
-        <div>
-          <h2><i class="fa fa-exchange-alt" style="color:var(--accent)"></i> Nová Transakce</h2>
-          <div class="muted">Zadejte detail platby nebo příjmu.</div>
-        </div>
+      <div>
+        <h2><i class="fa fa-exchange-alt" style="color:var(--accent)"></i> Nová Transakce</h2>
+        <div class="muted">Zadejte detail platby nebo příjmu.</div>
       </div>
 
       <div class="form-row" style="margin-top:20px">
@@ -310,7 +365,7 @@
     </div>
 
     <div class="card" id="transactionCard">
-      <div style="display:flex;justify-content:space-between;align-items:center">
+      <div style="display:flex;justify-content:space-between;align-items:center; flex-wrap:wrap; gap:10px;">
         <div>
           <h3 class="muted"><i class="fa fa-receipt"></i> Detailní Přehled Transakcí</h3>
           <div class="muted">Všechny platby a pohyby pro vybrané období.</div>
@@ -392,7 +447,7 @@
   
   <section id="section-history" style="display:none">
     <div class="card">
-        <h2><i class="fa fa-calendar-alt"></i> Měsíční Historie</h2>
+        <h2><i class="fa fa-calendar-alt"></i> Měsíční Historie a Grafy</h2>
         <div class="muted">Přehled hospodaření za minulých 12 měsíců.</div>
         <div id="historyList" class="history-list">
             </div>
@@ -434,13 +489,55 @@
 
 </main>
 
-<div id="transactionModal" class="modal-overlay">...</div>
-<div id="goalModal" class="modal-overlay">...</div>
+<div id="transactionModal" class="modal-overlay" style="display:none;">
+    <div class="modal-content">
+        <h2 id="modalTransactionTitle" style="margin-bottom:20px">Úprava Transakce</h2>
+        <div class="form-row">
+            <input type="date" id="modalTDate" />
+            <input type="text" id="modalTDesc" placeholder="Popis transakce"/>
+            <input type="number" id="modalTAmount" placeholder="Částka"/>
+            <select id="modalTType">
+              <option value="expense">Platba / Výdaj</option>
+              <option value="income">Přijatá platba / Příjem</option>
+            </select>
+            <select id="modalTCategory"></select>
+        </div>
+        <div class="modal-footer" style="display:flex;justify-content:space-between">
+            <button class="btn danger" id="modalDeleteBtn"><i class="fa fa-trash"></i> Smazat</button>
+            <button class="btn" onclick="saveTransactionProfile()"><i class="fa fa-save"></i> Uložit Změny</button>
+        </div>
+        <button class="btn secondary" onclick="closeModal('transactionModal')" style="width:100%; margin-top:10px;"><i class="fa fa-times"></i> Zavřít</button>
+    </div>
+</div>
+
+<div id="goalModal" class="modal-overlay" style="display:none;">
+    <div class="modal-content">
+        <h2 id="modalGoalTitle" style="margin-bottom:20px">Úprava Cíle</h2>
+        <div class="form-row">
+            <input type="text" id="modalGoalName" placeholder="Název cíle" style="flex-grow:1"/>
+            <input type="number" id="modalGoalTarget" placeholder="Cílová částka"/>
+            <input type="number" id="modalGoalSaved" placeholder="Aktuálně naspořeno" disabled title="Spravováno přes investice níže"/>
+        </div>
+        
+        <h3 style="margin-top:20px; border-top:1px solid var(--border); padding-top:15px;"><i class="fa fa-plus"></i> Přidat Investici</h3>
+        <p class="muted">Přidejte částku, která se zároveň odečte z vašeho rozpočtu.</p>
+        <div class="form-row">
+            <input type="date" id="modalInvestDate" style="flex-basis: 150px;"/>
+            <input type="number" id="modalInvestAmount" placeholder="Částka k investování"/>
+            <button class="btn income" onclick="addInvestmentFromModal()"><i class="fa fa-plus-circle"></i> Investovat</button>
+        </div>
+
+        <div class="modal-footer" style="display:flex;justify-content:space-between">
+            <button class="btn danger" id="modalGoalDeleteBtn"><i class="fa fa-trash"></i> Smazat Cíl</button>
+            <button class="btn" onclick="saveGoalProfile()"><i class="fa fa-save"></i> Uložit Cíl</button>
+        </div>
+        <button class="btn secondary" onclick="closeModal('goalModal')" style="width:100%; margin-top:10px;"><i class="fa fa-times"></i> Zavřít</button>
+    </div>
+</div>
 
 <script>
-// Ponechávám Váš PŮVODNÍ KÓD (JavaScript) beze změny.
-// Všechny funkční části, modaly a přepínání témat zůstávají.
-// Nové CSS se automaticky aplikuje na stávající HTML a JS logiku.
+// Váš PŮVODNÍ JAVASCRIPT KÓD JE ZACHOVÁN
+// Následují POUZE modifikace/doplnění pro body 2 a 4.
 
 /* =========================
    Storage & data model
@@ -452,11 +549,11 @@ const LS_CURRENCY = 'finance_currency_v1';
 const LS_EXCHANGE_RATE = 'finance_exchange_rate_v1';
 
 let store = {
-  transactions: [], // [{id: 1, date: 'YYYY-MM-DD', desc: 'Popis', amount: 1000, type: 'income'|'expense', category: 'Kategorie'}]
-  goals: [],        // [{id: 1, name: 'Auto', target: 500000, saved: 100000}]
-  categories: [],   // Inicializuje se v loadStore na default
+  transactions: [], 
+  goals: [],        
+  categories: [],   
   currency: 'CZK',
-  exchangeRate: 1, // 1 EUR = X CZK. Výchozí je 1, aby se CZK přepočítávaly 1:1, dokud se nenahrají EUR.
+  exchangeRate: 1, 
 };
 
 function loadStore(){
@@ -491,7 +588,6 @@ function loadStore(){
         ];
     }
     
-    // Načtení měny a kurzu
     const rawCurrency = localStorage.getItem(LS_CURRENCY);
     store.currency = rawCurrency || 'CZK';
     $('currencySelect').value = store.currency;
@@ -528,7 +624,6 @@ function formatDate(d){
     return dt.toLocaleDateString('cs-CZ'); 
 }
 function formatAmount(amount, currencyCode = store.currency){
-    // Převod na cílovou měnu
     let finalAmount = amount;
     let code = 'CZK';
     let locale = 'cs-CZ';
@@ -577,7 +672,7 @@ function showSection(e){
   if(sec === 'stats') computeStats();
   if(sec === 'goals') renderGoals();
   if(sec === 'history') renderHistory();
-  if(sec === 'settings') renderCategories(); // Ujistíme se, že se kategorie načtou
+  if(sec === 'settings') renderCategories(); 
 }
 
 /* MĚSÍČNÍ FILTR */
@@ -638,17 +733,17 @@ function renderMonthOptions() {
 }
 
 
-/* SETTINGS - Kategorie (OPRAVENO) */
-
-// Nová pomocná funkce pro aktualizaci SELECT polí s kategoriemi
+/* ========================================================
+   4. SPRÁVA KATEGORIÍ - renderCategories a logiku
+   ======================================================== */
 function updateCategorySelects() {
     const selects = [$('transactionCategory'), $('modalTCategory')];
     
     selects.forEach(select => {
-        if (!select) return; // Pokud modal ještě není v DOM (např. modalTCategory)
+        if (!select) return; 
         
         const currentSelected = select.value;
-        const currentType = select.id === 'transactionCategory' ? $('transactionType').value : $('modalTType').value;
+        const currentType = (select.id === 'transactionCategory' && $('transactionType')) ? $('transactionType').value : (select.id === 'modalTCategory' && $('modalTType')) ? $('modalTType').value : 'expense';
         
         select.innerHTML = '';
         
@@ -693,7 +788,6 @@ function renderCategories() {
         list.appendChild(tag);
     });
     
-    // Po vykreslení aktualizujeme i SELECTy
     updateCategorySelects();
 }
 
@@ -717,17 +811,16 @@ function addCategory() {
 }
 
 function deleteCategory(index, event) {
-    event.stopPropagation(); // Zabraňuje spuštění jiné akce na tagu (která zde není)
+    event.stopPropagation(); 
 
     const catToDelete = store.categories[index];
 
-    if (catToDelete.name === 'Investice' || catToDelete.name === 'Nezadáno' || catToDelete.name === 'Jídlo' || catToDelete.name === 'Výplata') {
+    if (['Investice', 'Nezadáno', 'Jídlo', 'Výplata', 'Nájem/Bydlení', 'Volný čas', 'Bonus'].includes(catToDelete.name)) {
         alert('Tuto výchozí/klíčovou kategorii nelze smazat.');
         return;
     }
     
     if (confirm(`Opravdu chcete smazat kategorii "${catToDelete.name}"? Všechny transakce s touto kategorií budou převedeny na "Nezadáno".`)) {
-        // Přesun transakcí
         store.transactions.forEach(t => {
             if (t.category === catToDelete.name) {
                 t.category = 'Nezadáno';
@@ -737,8 +830,8 @@ function deleteCategory(index, event) {
         store.categories.splice(index, 1);
         saveStore();
         renderCategories();
-        applyFilter(); // Aktualizace tabulky transakcí
-        computeStats(); // Aktualizace statistik
+        applyFilter(); 
+        computeStats(); 
     }
 }
 
@@ -749,7 +842,7 @@ function addTransaction(){
     const desc = $('transactionDesc').value.trim();
     const amount = parseFloat($('transactionAmount').value);
     const type = $('transactionType').value;
-    const category = $('transactionCategory').value; // Zde načteme vybranou kategorii
+    const category = $('transactionCategory').value; 
     
     if(!date || !desc || isNaN(amount) || amount <= 0){
         alert('Vyplňte prosím datum, popis a platnou kladnou částku.');
@@ -787,7 +880,6 @@ function openTransactionModal(id){
     const updateCategorySelect = (currentType) => {
         const categorySelect = $('modalTCategory');
         categorySelect.innerHTML = '';
-        // Filtr kategorií dle typu
         const relevantCategories = store.categories.filter(c => c.type === currentType);
         
         relevantCategories.forEach(c => {
@@ -797,11 +889,10 @@ function openTransactionModal(id){
             categorySelect.appendChild(opt);
         });
         
-        // Nastavíme vybranou kategorii (pokud existuje a je v seznamu)
         if (relevantCategories.some(c => c.name === currentTransaction.category)) {
              categorySelect.value = currentTransaction.category;
         } else {
-             categorySelect.value = relevantCategories[0]?.name || 'Nezadáno'; // Fallback
+             categorySelect.value = relevantCategories[0]?.name || 'Nezadáno'; 
         }
     };
 
@@ -856,12 +947,12 @@ function deleteTransaction(id){
 }
 
 
-/* GOALS - přidání investičního cíle (OPRAVENO) */
+/* GOALS */
 
 function addGoal(){
     const name = $('newGoalName').value.trim();
     const target = parseFloat($('newGoalTarget').value);
-    const saved = parseFloat($('newGoalSaved').value) || 0; // Může být 0
+    const saved = parseFloat($('newGoalSaved').value) || 0; 
 
     if(!name || isNaN(target) || target <= 0 || isNaN(saved) || saved < 0){
         alert('Vyplňte prosím název a platnou cílovou částku.');
@@ -929,12 +1020,10 @@ function openGoalModal(id){
     
     $('modalGoalTitle').innerHTML = `<i class="fa fa-bullseye"></i> Úprava cíle: ${currentGoal.name}`;
     
-    // Načtení dat cíle
     $('modalGoalName').value = currentGoal.name;
     $('modalGoalTarget').value = currentGoal.target;
     $('modalGoalSaved').value = currentGoal.saved;
     
-    // Reset investičního pole
     $('modalInvestAmount').value = '';
     $('modalInvestDate').value = new Date().toISOString().slice(0, 10);
 
@@ -955,7 +1044,6 @@ function saveGoalProfile(){
     
     currentGoal.name = $('modalGoalName').value.trim();
     currentGoal.target = target;
-    // currentGoal.saved se aktualizuje jen přes investici, v modalu je pouze pro zobrazení (disabled)
     
     saveStore();
     closeModal('goalModal');
@@ -971,7 +1059,6 @@ function deleteGoal(id){
     }
 }
 
-// NOVÁ KLÍČOVÁ FUNKCE: Přidání peněz do cíle + odepsání z rozpočtu
 function addInvestmentToGoal(goalId, amount, date){
     const goal = store.goals.find(g => g.id === goalId);
     if(!goal || isNaN(amount) || amount <= 0) return false;
@@ -1007,16 +1094,14 @@ function addInvestmentFromModal(){
     }
     
     if (addInvestmentToGoal(currentGoal.id, amount, date)) {
-        // Aktualizujeme zobrazenou naspořenou částku v modalu
-        currentGoal = store.goals.find(g => g.id === currentGoal.id); // Znovu načteme aktuální data
+        currentGoal = store.goals.find(g => g.id === currentGoal.id); 
         $('modalGoalSaved').value = currentGoal.saved;
 
         alert(`Investice ${formatAmount(amount)} byla přičtena k cíli "${currentGoal.name}" a odečtena z rozpočtu.`);
 
-        // Vyčistíme pole a aktualizujeme zobrazení
         $('modalInvestAmount').value = '';
         renderGoals();
-        applyFilter(); // Aktualizace rozpočtu a statistik
+        applyFilter(); 
     } else {
         alert('Nepodařilo se přidat investici. Zkuste to znovu.');
     }
@@ -1024,7 +1109,7 @@ function addInvestmentFromModal(){
 
 
 /* Ostatní funkce */
-let currentTransactions = []; // Nová definice pro export CSV
+let currentTransactions = []; 
 
 function renderTransactionTable(transactions){
     currentTransactions = transactions;
@@ -1175,13 +1260,18 @@ function computeStats(){
     });
 }
 
+/* ========================================================
+   2. PŘEHLED MĚSÍCŮ S GRAFY - renderHistory
+   ======================================================== */
 function renderHistory(){
     const listCont = $('historyList');
     listCont.innerHTML = '';
     
     const today = new Date();
     const monthlyStats = {};
+    let maxAmount = 0;
 
+    // 1. Sběr dat za posledních 12 měsíců
     for (let i = 0; i < 12; i++) {
         const date = new Date(today.getFullYear(), today.getMonth() - i, 1);
         const year = date.getFullYear();
@@ -1212,11 +1302,11 @@ function renderHistory(){
             income: totalIncome,
             expense: totalExpense,
             balance: totalIncome - totalExpense,
-            year: year,
-            month: month
         };
+        maxAmount = Math.max(maxAmount, totalIncome, totalExpense);
     }
     
+    // 2. Vykreslení karet s grafy
     Object.keys(monthlyStats).sort().reverse().forEach(key => {
         const stats = monthlyStats[key];
         const card = document.createElement('div');
@@ -1224,13 +1314,29 @@ function renderHistory(){
         
         const balanceColor = stats.balance >= 0 ? 'var(--accent2)' : 'var(--danger)';
         
+        // Výpočet výšek pro graf
+        const incomeHeight = maxAmount > 0 ? (stats.income / maxAmount) * 100 : 0;
+        const expenseHeight = maxAmount > 0 ? (stats.expense / maxAmount) * 100 : 0;
+        
         card.innerHTML = `
             <h4>${stats.name}</h4>
             <div class="history-stat-grid">
                 <div>Příjmy: <strong style="color:var(--accent2)">${formatAmount(stats.income)}</strong></div>
                 <div>Výdaje: <strong style="color:var(--danger)">${formatAmount(stats.expense)}</strong></div>
-                <div>Bilance: <strong style="color:${balanceColor}">${formatAmount(stats.balance)}</strong></div>
+                <div style="grid-column: 1 / span 2;">Bilance: <strong style="color:${balanceColor}">${formatAmount(stats.balance)}</strong></div>
             </div>
+            
+            <div class="chart-container">
+                <div class="chart-bar-wrap">
+                    <div class="chart-bar income" style="height: ${incomeHeight}%;"></div>
+                    <div class="chart-label" style="top: ${100 - incomeHeight - 5}%;">${incomeHeight > 0 ? Math.round(incomeHeight) + '%' : ''}</div>
+                </div>
+                <div class="chart-bar-wrap">
+                    <div class="chart-bar expense" style="height: ${expenseHeight}%;"></div>
+                    <div class="chart-label" style="top: ${100 - expenseHeight - 5}%;">${expenseHeight > 0 ? Math.round(expenseHeight) + '%' : ''}</div>
+                </div>
+            </div>
+            <div class="muted" style="text-align:center; font-size:0.8em; margin-top:5px;">Příjmy / Výdaje</div>
         `;
         listCont.appendChild(card);
     });
@@ -1290,7 +1396,7 @@ function exportCSV() {
         csv += `${t.date};"${t.desc.replace(/"/g, '""')}";${t.type === 'income' ? 'Příjem' : 'Výdaj'};${t.amount.toString().replace('.', ',')};${t.category || 'Nezadáno'}\n`;
     });
 
-    const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csv], { type: 'text/csv;charset=utf-8;' }); // BOM pro správné kódování v Excelu
+    const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csv], { type: 'text/csv;charset=utf-8;' }); 
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -1314,20 +1420,20 @@ function redrawAll(){
   
   $('currencySelect').value = store.currency; 
 
-  renderCategories(); // DŮLEŽITÉ: Načte kategorie i do SELECTu
+  renderCategories(); 
   renderGoals(); 
   applyFilter(); 
   
   const currentTheme = document.body.getAttribute('data-theme') || 'light';
   updateThemeButton(currentTheme);
   if(currentTheme === 'dark') {
-      initStarfield(); // Přečte novou opacitu z CSS
+      initStarfield(); 
       startStarfield(); 
   }
 }
 
 
-/* theme & starfield animation */
+/* theme & starfield animation - ZACHOVÁNO */
 let starfieldCtx = null;
 let stars = [];
 let starAnimId = null;
