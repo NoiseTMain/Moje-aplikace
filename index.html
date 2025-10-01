@@ -1065,7 +1065,7 @@ function updateCategorySelects() {
             currentType = $('transactionType')?.value || 'expense';
         }
         
-        const currentSelected = select.value;
+        let currentSelected = select.value;
         
         select.innerHTML = '';
         const relevantCategories = store.categories.filter(c => c.type === currentType);
@@ -1537,12 +1537,55 @@ function renderRecurringPaymentsManagement() {
         return;
     }
 
+    // Získání aktuálního měsíce a roku z filtru (nebo z dneška, pokud filtr není aktivní)
+    const filterFrom = $('filterFrom').value ? new Date($('filterFrom').value) : new Date();
+    const filterTo = $('filterTo').value ? new Date($('filterTo').value) : new Date();
+    
+    const currentMonth = filterFrom.getMonth();
+    const currentYear = filterFrom.getFullYear();
+    
+    // Pomocná funkce, která zjistí, zda byla platba uhrazena V AKTUÁLNÍM MĚSÍCI FILTRU
+    const isPaidInCurrentFilterMonth = (payment) => {
+        if (!payment.lastPaidDate) return false;
+        const lastPaid = new Date(payment.lastPaidDate);
+        // Kontroluje, zda datum úhrady spadá do rozsahu filtru
+        return lastPaid >= filterFrom && lastPaid <= filterTo;
+    };
+
+
     store.recurringPayments.forEach(r => {
+        const isPaid = isPaidInCurrentFilterMonth(r);
+        
         const item = document.createElement('div');
         item.className = 'card recurring-payment-card';
         item.style.marginBottom = '10px';
         item.style.cursor = 'pointer';
         item.onclick = () => openRecurringModal(r.id);
+
+        let buttonHtml = '';
+        if (isPaid) {
+            // Platba je zaplacená v aktuálním období - tlačítko pro "znovuzapnutí"
+            buttonHtml = `
+                <div style="text-align:right; margin-top:10px;">
+                    <span style="color:var(--accent2); font-weight:700; margin-right:10px;">
+                        <i class="fa fa-check-circle"></i> Zaplaceno: ${formatDate(r.lastPaidDate)}
+                    </span>
+                    <button class="btn danger action-small" onclick="event.stopPropagation(); reactivateRecurringPayment('${r.id}')" title="Nastaví poslední úhradu na Null, aby se platba zobrazila jako NEUHRAZENÁ a připravila se na další úhradu.">
+                        <i class="fa fa-redo"></i> Znovu Zapnout
+                    </button>
+                </div>
+            `;
+            item.style.borderLeftColor = 'var(--accent2)'; // Zelená, že je v tomto měsíci zaplaceno
+        } else {
+            // Platba není zaplacená v aktuálním období - jen informace o poslední úhradě
+            const lastPaidInfo = r.lastPaidDate ? formatDate(r.lastPaidDate) : 'Nezaplaceno';
+            buttonHtml = `
+                <div style="text-align:right; margin-top:10px;">
+                    <span class="muted" style="margin-right:10px;">Poslední úhrada: ${lastPaidInfo}</span>
+                </div>
+            `;
+            item.style.borderLeftColor = '#ff9900'; // Oranžová, že je k úhradě
+        }
 
         item.innerHTML = `
             <div style="display:flex;justify-content:space-between;align-items:center;">
@@ -1552,10 +1595,29 @@ function renderRecurringPaymentsManagement() {
             <div class="muted" style="margin-top:5px; font-size:0.9em;">
                 Den splatnosti: ${r.dueDate}. | Kategorie: ${r.category}
             </div>
+            ${buttonHtml}
         `;
         list.appendChild(item);
     });
 }
+
+function reactivateRecurringPayment(id) {
+    const payment = store.recurringPayments.find(r => r.id === id);
+    if (!payment) return;
+
+    if (confirm(`Opravdu chcete platbu "${payment.name}" nastavit jako NEUHRAZENOU pro aktuální období?`)) {
+        // Nastavíme lastPaidDate na null, což znamená, že je potřeba ji znova zaplatit.
+        payment.lastPaidDate = null; 
+        saveStore();
+        
+        alert(`Platba "${payment.name}" byla znovu aktivována.`);
+        
+        renderRecurringPaymentsManagement();
+        renderRecurringPaymentsGoalSection();
+        applyFilter();
+    }
+}
+
 
 function openRecurringModal(id) {
     currentRecurring = store.recurringPayments.find(r => r.id === id);
@@ -1624,7 +1686,7 @@ function renderRecurringPaymentsGoalSection() {
     list.innerHTML = '';
     
     // Získání aktuálně nezaplacených plateb pro aktuální měsíc (na základě filtru)
-    const upcoming = getUpcomingPayments(new Date($('filterFrom').value), new Date($('filterTo').value));
+    const upcoming = getUpcomingPayments($('filterFrom').value, $('filterTo').value);
     
     if (upcoming.length === 0) {
         list.innerHTML = '<div class="muted">Žádné trvalé platby k úhradě v tomto období.</div>';
@@ -1683,6 +1745,7 @@ function markRecurringPaymentAsPaid(id) {
     
     renderRecurringPaymentsGoalSection();
     applyFilter();
+    renderRecurringPaymentsManagement(); // Aktualizace i Správy
 }
 
 
@@ -1692,35 +1755,34 @@ function getUpcomingPayments(filterFrom, filterTo) {
     
     const fDate = new Date(filterFrom);
     const tDate = new Date(filterTo);
-    
-    // Standardně filtrujeme po měsících. Použijeme konec filtru (filterTo) jako referenční datum.
-    const filterMonth = tDate.getMonth();
-    const filterYear = tDate.getFullYear();
-    
+    // Nastavíme konec filtru na konec dne pro přesné porovnání
+    let filterToDate = tDate;
+    filterToDate.setHours(23, 59, 59, 999); 
+
     return store.recurringPayments.filter(r => {
         const lastPaidDate = r.lastPaidDate ? new Date(r.lastPaidDate) : null;
         const dueDay = r.dueDate;
         
         // Vytvoření data splatnosti pro aktuální měsíc filtru
-        // Ošetření, že den 31 neexistuje v únoru atp. (převedeno na poslední den měsíce)
-        const dueInFilterMonth = new Date(filterYear, filterMonth, dueDay);
+        // Vezmeme rok a měsíc z data filtru
+        const filterMonth = fDate.getMonth(); 
+        const filterYear = fDate.getFullYear();
         
-        // Zkontrolujeme, zda datum splatnosti spadá do rozsahu filtru
-        const isDueInFilterPeriod = dueInFilterMonth >= fDate && dueInFilterMonth <= tDate;
+        // Ošetření, že den 31 neexistuje v únoru atp. (převedeno na poslední den měsíce)
+        const dateObj = new Date(filterYear, filterMonth, dueDay); 
+        
+        // Zkontrolujeme, zda datum splatnosti spadá do rozsahu filtru (jednoduchá kontrola)
+        const isDueInFilterPeriod = dateObj >= fDate && dateObj <= filterToDate;
 
         if (isDueInFilterPeriod) {
             // Je splatná v tomto měsíci (období)
             if (lastPaidDate) {
-                // Poslední úhrada byla v referenčním měsíci filtru?
-                const lastPaidMonth = lastPaidDate.getMonth();
-                const lastPaidYear = lastPaidDate.getFullYear();
-                
-                // Pokud je poslední úhrada ve stejném měsíci filtru, je již uhrazená
-                if (lastPaidMonth === filterMonth && lastPaidYear === filterYear) {
-                    return false; // Již zaplaceno pro toto období
+                // Kontrola, zda poslední úhrada spadá do AKTIVNÍHO FILTRAČNÍHO ROZSAHU
+                if (lastPaidDate >= fDate && lastPaidDate <= filterToDate) {
+                    return false; // Již zaplaceno pro toto období filtru
                 }
             }
-            return true; // Je splatná a neuhrazená
+            return true; // Je splatná a neuhrazená v rámci filtru
         }
         
         return false; // Nespadá do období
@@ -1862,6 +1924,10 @@ function applyFilter(){
     
     // Spustíme computeStats pouze pokud je sekce aktivní
     if(document.querySelector('.footer-nav button[data-section="stats"]').classList.contains('active')) computeStats();
+    
+    // DŮLEŽITÉ: Aktualizace Správy trvalých plateb při změně filtru
+    if(document.querySelector('.footer-nav button[data-section="settings"]').classList.contains('active')) renderRecurringPaymentsManagement();
+
 }
 
 function applySort(){
@@ -2102,7 +2168,7 @@ function redrawAll(){
   renderCategories(); 
   renderGoals(); 
   renderCards(); 
-  renderRecurringPaymentsManagement(); // NOVÉ: naplnění dnů a managemnt
+  fillRecurringDaySelects(); // Inicializace dnů
   
   // Zobrazení defaultní sekce a aktivace nav tlačítka
   document.querySelectorAll('main section').forEach(s => s.style.display = 'none');
@@ -2150,3 +2216,4 @@ function updateThemeButton(theme){
 
 </body>
 </html>
+
