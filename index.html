@@ -49,11 +49,11 @@
   *{box-sizing:border-box;margin:0;padding:0}
   
   /* ========================================================
-     KLÍČOVÁ ZMĚNA: FIXNÍ VÝŠKA PRO APP-STYLE (ZAMEZENÍ SCROLLU CELÉ STRÁNKY)
+     OPRAVA 3: FIXNÍ VÝŠKA PRO APP-STYLE & OBSAH SE SCROLLEM
      ======================================================== */
   html, body {
     height: 100%;
-    overflow: hidden; /* Zamezí se globální scroll */
+    overflow: hidden; /* Zamezí se globální scroll - Scrolluje se jen wrap */
   }
   body{
     font-family: 'Inter', "Segoe UI", Tahoma, sans-serif;
@@ -65,19 +65,26 @@
   
   /* Záhlaví - Fixní a čisté */
   header{
-    position: sticky; top: 0; z-index: 100; 
+    /* Důležité: 'position: sticky' byl nahrazen 'position: fixed' pro dokonalé ukotvení nahoře, 
+       jelikož body nemá scroll, sticky by nefungovalo správně */
+    position: fixed; top: 0; left:0; width:100%; z-index: 100; 
     background: var(--card); 
     border-bottom: 1px solid var(--border); 
     padding:16px 18px; 
     display:flex; align-items:center; justify-content:space-between;
     box-shadow: 0 1px 4px rgba(0,0,0,0.05); 
     color: var(--text);
+    /* Přidáno: výška headeru */
+    height: 62px;
+  }
+  @media(max-width:768px){ 
+    header{ height: 56px; }
   }
   .title h1{ font-size:20px; margin-bottom:2px; font-weight:900; }
   .title .sub{ font-size:12px; color:var(--muted); font-weight:500; }
 
   /* ========================================================
-     Kontejner a Karty (NOVÉ: VÝŠKA PRO SCROLL JEDNOTLIVÝCH SEKCÍ)
+     Kontejner a Karty (Zbývající výška pro scroll)
      ======================================================== */
   .wrap{
     max-width:1200px;
@@ -85,15 +92,18 @@
     padding:0 12px; 
     position:relative; 
     z-index:5;
-    /* Zbývající výška po odečtení header a footer nav */
+    /* Důležité: odečtení VÝŠKY HEADERU a VÝŠKY FOOTER NAV */
     height: calc(100% - 62px - 75px); 
     overflow-y: auto; /* Povolí scroll POUZE v rámci obsahu sekce */
     scroll-behavior: smooth;
+    /* Důležité: Odsazení od fixního headeru */
+    margin-top: 62px;
     padding-top: 20px; /* Přidáno polstrování pro obsah */
   }
   @media(max-width:768px){ 
     .wrap{ 
         height: calc(100% - 56px - 75px); /* Menší header na mobilu */
+        margin-top: 56px;
         padding-top: 16px; 
     }
   }
@@ -102,6 +112,8 @@
   main section {
       padding-bottom: 20px; /* Polstrování na konci sekce pro lepší vzhled */
   }
+  
+  /* ... (OSTATNÍ CSS ZŮSTÁVÁ STEJNÉ) ... */
   
   .card{
     background:var(--card); 
@@ -162,13 +174,14 @@
     font-weight:700; 
     font-size:0.9em; 
     border-right:none; 
-    position: sticky; top: 0; z-index: 10; /* Fixní hlavička v sekci */
+    /* Fixní hlavička v sekci - funguje díky scrollu na .wrap */
+    position: sticky; top: 0; z-index: 10; 
   }
   table.main tbody tr:last-child td { border-bottom: none; }
   .action-small { padding: 8px 12px; font-size: 0.8em; }
 
   /* ========================================================
-     5. FIXNÍ SPODNÍ NAVIGACE (App Style)
+     FIXNÍ SPODNÍ NAVIGACE (App Style)
      ======================================================== */
   .footer-nav{
     position: fixed;
@@ -213,9 +226,7 @@
     background: none;
   }
   
-  /* ========================================================
-     6. KARTA VZHLED - American Express (ÚPRAVA pro interaktivitu)
-     ======================================================== */
+  /* ... (KARTA VZHLED - American Express) ... */
   .card-container-wrap {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -332,8 +343,6 @@
 </style>
 </head>
 <body data-theme="light">
-
-<canvas id="starfield"></canvas>
 
 <header>
   <div style="display:flex;align-items:center;gap:12px;justify-content:space-between;width:100%">
@@ -582,7 +591,7 @@ const LS_GOALS = 'finance_goals_v1';
 const LS_CATEGORIES = 'finance_categories_v1'; 
 const LS_CURRENCY = 'finance_currency_v1';
 const LS_EXCHANGE_RATE = 'finance_exchange_rate_v1';
-const LS_CARDS = 'finance_cards_v2'; // NOVÁ VERZE PRO KARTY S VÍCE DATY
+const LS_CARDS = 'finance_cards_v2'; 
 
 let store = {
   transactions: [], 
@@ -609,7 +618,6 @@ function loadStore(){
     }));
     else store.goals = [];
     
-    // NOVÉ - načtení karet
     const rawCards = localStorage.getItem(LS_CARDS);
     if(rawCards) store.cards = JSON.parse(rawCards).map(c => ({
         ...c, 
@@ -708,7 +716,7 @@ function changeCurrency(){
 }
 
 
-/* NAVIGACE - OPRAVENO */
+/* NAVIGACE */
 function showSection(e){
   const btn = e.currentTarget;
   document.querySelectorAll('.footer-nav button').forEach(b=>b.classList.remove('active'));
@@ -717,8 +725,8 @@ function showSection(e){
   document.querySelectorAll('main section').forEach(s => s.style.display = 'none');
   $('section-'+sec).style.display = 'block'; 
   
-  // Přesun na začátek obsahu sekce
-  $('section-'+sec).closest('.wrap').scrollTop = 0;
+  // Přesun na začátek obsahu sekce (.wrap je element, který se scrolluje)
+  document.querySelector('.wrap').scrollTop = 0;
   
   if(sec === 'stats') computeStats();
   if(sec === 'cards') renderCards(); 
@@ -1220,7 +1228,7 @@ function addInvestmentFromModal(){
 
 
 /* ========================================================
-   7. NOVÁ SEKCE KARET - Logika (VYLEPŠENO)
+   SEKCE KARET - Logika
    ======================================================== */
 
 function addCard() {
@@ -1578,7 +1586,7 @@ function renderHistory(){
 function clearAll(){
     if(confirm('POZOR: Opravdu chcete smazat VŠECHNA data (transakce, cíle, kategorie, karty)? Tato akce je nevratná.')){
         localStorage.clear();
-        alert('Všechna data byla smazána. Aplikace se obnoví.');
+        alert('Všechna data byly smazána. Aplikace se obnoví.');
         window.location.reload();
     }
 }
@@ -1666,94 +1674,18 @@ function redrawAll(){
   const currentTheme = localStorage.getItem('theme') || 'light'; 
   document.body.setAttribute('data-theme', currentTheme);
   updateThemeButton(currentTheme);
-  if(currentTheme === 'dark') {
-      initStarfield(); 
-      startStarfield(); 
-  }
+  // Odstraněny startStarfield a initStarfield, aby v dark modu nic nemizelo.
 }
 
 
-/* theme & starfield animation */
-let starfieldCtx = null;
-let stars = [];
-let starAnimId = null;
-
-const devicePixelRatio = window.devicePixelRatio || 1;
-
-function initStarfield(){
-  const c = document.getElementById('starfield');
-  if (!c) return; 
-  
-  c.width = window.innerWidth * devicePixelRatio;
-  c.height = window.innerHeight * devicePixelRatio;
-  c.style.width = window.innerWidth + 'px';
-  c.style.height = window.innerHeight + 'px';
-  starfieldCtx = c.getContext('2d');
-  starfieldCtx.scale(devicePixelRatio, devicePixelRatio);
-  
-  stars = [];
-  const count = Math.round(window.innerWidth / 12);
-  for(let i=0;i<count;i++){
-    stars.push({
-      x: Math.random() * window.innerWidth,
-      y: Math.random() * window.innerHeight,
-      r: Math.random() * 1.2 + 0.3,
-      vx: (Math.random()-0.5)*0.02,
-      vy: (Math.random()-0.5)*0.02,
-      twinkle: Math.random()*1.5
-    });
-  }
-}
-
-function animateStarfield(time){
-  if(!starfieldCtx) return;
-  starfieldCtx.clearRect(0,0,window.innerWidth,window.innerHeight);
-  starfieldCtx.globalCompositeOperation = 'lighter';
-  stars.forEach(s=>{
-    s.x += s.vx * (1 + Math.sin(time/1000 + s.twinkle));
-    s.y += s.vy * (1 + Math.cos(time/1100 + s.twinkle));
-    if(s.x < 0) s.x = window.innerWidth;
-    if(s.x > window.innerWidth) s.x = 0;
-    if(s.y < 0) s.y = window.innerHeight;
-    if(s.y > window.innerHeight) s.y = 0;
-    const g = starfieldCtx.createRadialGradient(s.x, s.y, 0, s.x, s.y, s.r*6);
-    g.addColorStop(0, 'rgba(255,255,255,0.95)');
-    g.addColorStop(0.2, 'rgba(255,255,255,0.6)');
-    g.addColorStop(1, 'rgba(255,255,255,0.0)');
-    starfieldCtx.fillStyle = g;
-    starfieldCtx.beginPath();
-    starfieldCtx.arc(s.x, s.y, s.r*3, 0, Math.PI*2);
-    starfieldCtx.fill();
-  });
-  starAnimId = requestAnimationFrame(animateStarfield);
-}
-function startStarfield(){ 
-    if(!starfieldCtx) initStarfield(); 
-    if(!starAnimId) starAnimId = requestAnimationFrame(animateStarfield); 
-}
-function stopStarfield(){ 
-    if(starAnimId){ 
-        cancelAnimationFrame(starAnimId); 
-        starAnimId = null; 
-        const c = document.getElementById('starfield'); 
-        if(c && starfieldCtx){ 
-            starfieldCtx.clearRect(0,0,c.width,c.height); 
-        } 
-    } 
-}
-
+/* theme toggling */
 function toggleTheme(){
   const body = document.body;
   const t = body.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
   body.setAttribute('data-theme', t);
-  localStorage.setItem('theme', t); // Uložení do Local Storage
+  localStorage.setItem('theme', t); 
   updateThemeButton(t);
-  if(t === 'dark'){ 
-    initStarfield();
-    startStarfield(); 
-  } else { 
-    stopStarfield(); 
-  }
+  // Tím, že byly odstraněny funkce pro starfield, ztmaví se jen pozadí, ale obsah zůstane viditelný.
 }
 
 function updateThemeButton(theme){
@@ -1766,21 +1698,8 @@ function updateThemeButton(theme){
     }
 }
 
-window.addEventListener('resize', ()=>{ 
-    if(document.body.getAttribute('data-theme')==='dark'){
-        initStarfield(); 
-    }
-});
+// Odstraněno resize listener a mousemove listener, jelikož se starfield nepoužívá.
 
-window.addEventListener('mousemove',(e)=>{
-  if(!stars || stars.length===0 || document.body.getAttribute('data-theme') === 'light') return; 
-  const cx = e.clientX / window.innerWidth - 0.5;
-  const cy = e.clientY / window.innerHeight - 0.5;
-  stars.forEach((s,i)=>{
-    s.x += cx * 0.6 * (i%3===0 ? 0.6 : 0.2);
-    s.y += cy * 0.6 * (i%3===0 ? 0.6 : 0.2);
-  });
-});
 
 /* init */
 (function init(){
@@ -1789,10 +1708,7 @@ window.addEventListener('mousemove',(e)=>{
   
   redrawAll();
   
-  if(savedTheme === 'dark') {
-      initStarfield();
-      startStarfield(); 
-  }
+  // Odstraněn kód pro startStarfield v init
 })();
 </script>
 
