@@ -32,9 +32,6 @@
     /* Přidáno pro Visa/MasterCard simulaci */
     --visa-blue: linear-gradient(135deg, #1A479F, #196FB3); 
     --mastercard-red: linear-gradient(135deg, #E8291A, #C9000C);
-    
-    /* NOVÁ BARVA PRO OČEKÁVANÉ PŘÍJMY (ŽLUTO-ZELENÁ) */
-    --upcoming-income: #FFC107; 
   }
   /* ÚPRAVA TMAVÉHO REŽIMU */
   [data-theme='dark']{
@@ -51,8 +48,6 @@
     --shadow: 0 4px 12px rgba(0,0,0,0.5); 
     --amex-gold: linear-gradient(135deg, #c3a06f, #806131); 
     --amex-platinum: linear-gradient(135deg, #8f9195, #5d5e62);
-    /* NOVÁ BARVA PRO OČEKÁVANÉ PŘÍJMY */
-    --upcoming-income: #FFEB3B; 
   }
 
   /* RESET A ZÁKLADNÍ TYPOGRAFIE */
@@ -450,20 +445,6 @@
     align-items: center;
     gap: 5px;
   }
-  /* NOVÝ STYL PRO INDIKÁTOR OČEKÁVANÝCH PŘÍJMŮ */
-  .expected-indicator {
-    background: var(--upcoming-income); /* Žluto-zelená barva */
-    color: var(--text);
-    padding: 4px 8px;
-    border-radius: 6px;
-    font-size: 0.8em;
-    margin-left: 8px;
-    font-weight: 800;
-    white-space: nowrap;
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-  }
   .recurring-payment-card {
       /* Změněno, barva se nastavuje dynamicky v JS */
       border-left: 5px solid #ff9900; 
@@ -481,10 +462,6 @@
       margin-bottom: 15px;
       border-radius: 8px;
       border: 1px dashed #ff9900;
-  }
-  /* NOVÝ STYL PRO OČEKÁVANÉ PŘÍJMY */
-  .expected-income-card {
-      border-left: 5px solid var(--upcoming-income);
   }
   
   /* Styl pro graf v Historii (Bod 2 - Zobrazení Historie) */
@@ -571,24 +548,14 @@
           <span id="upcomingPaymentsSum" class="upcoming-indicator" style="display:none;">
             <i class="fa fa-exclamation-triangle"></i> K úhradě: <span id="upcomingAmountText"></span>
           </span>
-          <span id="expectedIncomeSum" class="expected-indicator" style="display:none;">
-            <i class="fa fa-piggy-bank"></i> **Má přijít**: <span id="expectedAmountText"></span>
-          </span>
         </div>
       </div>
-      
+
       <div id="upcomingPaymentsDetail" class="unpaid-bill" style="display:none; margin-top: 15px;">
         <p class="muted" style="padding:10px 12px; border-bottom:1px solid var(--border);">
             <i class="fa fa-calendar-alt" style="color:#ff9900;"></i> **Trvalé platby k úhradě** v tomto období:
         </p>
         <div id="upcomingPaymentsList"></div>
-      </div>
-      
-      <div id="expectedIncomeDetail" class="unpaid-bill" style="display:none; margin-top: 15px; border: 1px dashed var(--upcoming-income);">
-        <p class="muted" style="padding:10px 12px; border-bottom:1px solid var(--border); color:var(--text);">
-            <i class="fa fa-money-bill-wave" style="color:var(--upcoming-income);"></i> **Očekávané Příjmy** (Mají přijít):
-        </p>
-        <div id="expectedIncomeList"></div>
       </div>
       
       <div class="table-wrap" style="overflow-x:auto;">
@@ -701,22 +668,7 @@
   </section>
 
   <section id="section-settings" style="display:none">
-    
     <div class="card">
-      <h2><i class="fa fa-money-bill-wave" style="color:var(--upcoming-income);"></i> Správa Očekávaných Příjmů</h2>
-      <p class="muted">Zaznamenejte platby, které Vám mají přijít, a sledujte je v sekci **Účet**.</p>
-
-      <div style="margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;border:1px solid var(--border);padding:15px;border-radius:12px;background:var(--bg)">
-        <input type="text" id="newExpectedName" placeholder="Název příjmu (např. 'Faktura')" style="flex-grow:1"/>
-        <input type="number" id="newExpectedAmount" placeholder="Částka (Kč)"/>
-        <select id="newExpectedCategory" style="flex-basis: 150px;"></select>
-        <button class="btn" style="background:var(--accent2);" onclick="addExpectedIncome()"><i class="fa fa-plus"></i> Přidat Příjem</button>
-      </div>
-      
-      <div id="expectedIncomeListManagement" style="margin-top:20px"></div>
-    </div>
-    
-    <div class="card" style="margin-top:16px;">
       <h2><i class="fa fa-calendar-alt" style="color:#ff9900;"></i> Správa Trvalých Plateb</h2>
       <p class="muted">Nastavte pravidelné platby (paušály, předplatné). <span style="font-weight:700; color:#ff9900;">Nezaplacené se zobrazí v sekci Účet a Cíle.</span></p>
 
@@ -855,24 +807,10 @@
     </div>
 </div>
 
-<div id="expectedModal" class="modal-overlay" style="display:none;">
-    <div class="modal-content">
-        <h2 id="modalExpectedTitle" style="margin-bottom:20px">Úprava Očekávaného Příjmu</h2>
-        <div class="form-row">
-            <input type="text" id="modalEName" placeholder="Název příjmu" style="flex-grow:1"/>
-            <input type="number" id="modalEAmount" placeholder="Částka"/>
-            <select id="modalECategory"></select>
-        </div>
-        <div class="modal-footer" style="display:flex;justify-content:space-between; margin-top:20px;">
-            <button class="btn danger" id="modalEDeleteBtn"><i class="fa fa-trash"></i> Smazat</button>
-            <button class="btn" onclick="saveExpectedProfile()"><i class="fa fa-save"></i> Uložit Změny</button>
-        </div>
-        <button class="btn secondary" onclick="closeModal('expectedModal')" style="width:100%; margin-top:10px;"><i class="fa fa-times"></i> Zavřít</button>
-    </div>
-</div>
-
 
 <script>
+// PŮVODNÍ KÓD ZŮSTÁVÁ, OPRAVENÁ A ROZŠÍŘENÁ LOGIKA NÍŽE
+
 /* =========================
    Storage & data model
    ========================= */
@@ -882,16 +820,14 @@ const LS_CATEGORIES = 'finance_categories_v1';
 const LS_CURRENCY = 'finance_currency_v1';
 const LS_EXCHANGE_RATE = 'finance_exchange_rate_v1';
 const LS_CARDS = 'finance_cards_v2'; 
-const LS_RECURRING_PAYMENTS = 'finance_recurring_payments_v1';
-const LS_EXPECTED_INCOME = 'finance_expected_income_v1'; // NOVÁ KONSTANTA
+const LS_RECURRING_PAYMENTS = 'finance_recurring_payments_v1'; // NOVÁ KONSTANTA
 
 let store = {
   transactions: [], 
   goals: [],        
   categories: [],   
   cards: [], 
-  recurringPayments: [], 
-  expectedIncome: [], // NOVÉ: očekávané příjmy
+  recurringPayments: [], // NOVÉ: trvalé platby
   currency: 'CZK',
   exchangeRate: 1, 
 };
@@ -919,21 +855,15 @@ function loadStore(){
     }));
     else store.cards = [];
     
+    // NAČTENÍ TRVALÝCH PLATEB
     const rawR = localStorage.getItem(LS_RECURRING_PAYMENTS);
     if(rawR) store.recurringPayments = JSON.parse(rawR).map(r => ({
         ...r, 
         id: r.id || Math.random().toString(36).substring(2, 9),
+        // Zajištění, že lastPaidDate je Date (nebo null)
         lastPaidDate: r.lastPaidDate ? r.lastPaidDate : null 
     }));
     else store.recurringPayments = [];
-    
-    // NAČTENÍ OČEKÁVANÝCH PŘÍJMŮ
-    const rawE = localStorage.getItem(LS_EXPECTED_INCOME);
-    if(rawE) store.expectedIncome = JSON.parse(rawE).map(e => ({
-        ...e, 
-        id: e.id || Math.random().toString(36).substring(2, 9),
-    }));
-    else store.expectedIncome = [];
 
 
     const rawC = localStorage.getItem(LS_CATEGORIES);
@@ -949,7 +879,6 @@ function loadStore(){
             { name: 'Investice', type: 'expense' },
             { name: 'Výplata', type: 'income' },
             { name: 'Bonus', type: 'income' },
-            { name: 'Faktura', type: 'income' }, // Přidána i výchozí pro očekávaný příjem
         ];
     }
     
@@ -966,8 +895,7 @@ function loadStore(){
     store.transactions = [];
     store.goals = [];
     store.cards = []; 
-    store.recurringPayments = []; 
-    store.expectedIncome = []; // Reset i pro nové pole
+    store.recurringPayments = []; // Reset i pro nové pole
     store.categories = [ { name: 'Nezadáno', type: 'expense' } ];
     store.currency = 'CZK';
     store.exchangeRate = 1;
@@ -980,16 +908,13 @@ function saveStore(){
   localStorage.setItem(LS_CURRENCY, store.currency);
   localStorage.setItem(LS_EXCHANGE_RATE, store.exchangeRate.toFixed(4));
   localStorage.setItem(LS_CARDS, JSON.stringify(store.cards)); 
-  localStorage.setItem(LS_RECURRING_PAYMENTS, JSON.stringify(store.recurringPayments)); 
-  localStorage.setItem(LS_EXPECTED_INCOME, JSON.stringify(store.expectedIncome)); // ULOŽENÍ OČEKÁVANÝCH PŘÍJMŮ
+  localStorage.setItem(LS_RECURRING_PAYMENTS, JSON.stringify(store.recurringPayments)); // ULOŽENÍ TRVALÝCH PLATEB
 }
 
 /* helpers */
 function $(id){return document.getElementById(id)}
-let currentTransaction = null; 
+function closeModal(id){ $(id).style.display = 'none'; currentTransaction = null; currentGoal = null; currentRecurring = null; } // Přidána nová proměnná
 let currentRecurring = null;
-let currentExpected = null; // NOVÁ PRO PROFIL OČEKÁVANÉHO PŘÍJMU
-function closeModal(id){ $(id).style.display = 'none'; currentTransaction = null; currentGoal = null; currentRecurring = null; currentExpected = null; }
 
 
 function formatDate(d){ 
@@ -1032,7 +957,7 @@ function changeCurrency(){
     saveStore();
     applyFilter();
     renderGoals();
-    renderRecurringPaymentsGoalSection();
+    renderRecurringPaymentsGoalSection(); // Znovu vykreslit trvalé platby
     if(document.querySelector('.footer-nav button[data-section="stats"]').classList.contains('active')) computeStats();
     if(document.querySelector('.footer-nav button[data-section="history"]').classList.contains('active')) renderHistory();
 }
@@ -1055,13 +980,14 @@ function showSection(e){
   if(sec === 'cards') renderCards(); 
   if(sec === 'goals') { 
     renderGoals();
+    // BOD 1: Zobrazení trvalých plateb k úhradě
     renderRecurringPaymentsGoalSection(); 
   }
   if(sec === 'history') renderHistory();
   if(sec === 'settings') {
     renderCategories(); 
+    // BOD 1: Render správy trvalých plateb
     renderRecurringPaymentsManagement(); 
-    renderExpectedIncomeManagement(); // NOVÉ: vykreslení správy očekávaných příjmů
   }
 }
 
@@ -1133,47 +1059,49 @@ function renderMonthOptions() {
 
 /* SPRÁVA KATEGORIÍ */
 function updateCategorySelects() {
-    const selects = [$('transactionCategory'), $('modalTCategory'), $('newRecurringCategory'), $('modalRCategory'), $('newExpectedCategory'), $('modalECategory')]; // Přidány nové selecty
+    const selects = [$('transactionCategory'), $('modalTCategory'), $('newRecurringCategory'), $('modalRCategory')];
     
-    // Pro trvalé platby a očekávané příjmy
+    // Pro trvalé platby potřebujeme jen výdajové kategorie
     const expenseCategories = store.categories.filter(c => c.type === 'expense');
-    const incomeCategories = store.categories.filter(c => c.type === 'income');
     
     selects.forEach(select => {
         if (!select) return; 
         
         const isModalT = select.id === 'modalTCategory';
         const isRecurring = select.id.includes('RecurringCategory');
-        const isExpected = select.id.includes('ExpectedCategory') || select.id === 'modalECategory'; // Nová kontrola
-
-        select.innerHTML = '';
-        let relevantCategories = [];
-        let defaultCategory = 'Nezadáno';
-
+        
         if (isRecurring) {
-            relevantCategories = expenseCategories;
-            defaultCategory = 'Nezadáno';
-        } else if (isExpected) { // Nová logika pro očekávané příjmy
-            relevantCategories = incomeCategories;
-            defaultCategory = 'Výplata';
-        } else {
-            // Pro běžné transakce (závisí na typu transakce)
-            let currentType;
-            if (isModalT) {
-                currentType = $('modalTType')?.value || 'expense';
-            } else {
-                currentType = $('transactionType')?.value || 'expense';
+            select.innerHTML = '';
+            expenseCategories.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c.name;
+                opt.textContent = c.name;
+                select.appendChild(opt);
+            });
+            // Zajistíme, že je vybrána platná hodnota (i po případném smazání)
+            if (!expenseCategories.some(c => c.name === select.value) && expenseCategories.length > 0) {
+                 select.value = expenseCategories[0].name;
             }
-            relevantCategories = store.categories.filter(c => c.type === currentType);
-            defaultCategory = currentType === 'expense' ? 'Nezadáno' : 'Výplata';
+            return;
+        }
+
+        // Pro běžné transakce (závisí na typu transakce)
+        let currentType;
+        if (isModalT) {
+            currentType = $('modalTType')?.value || 'expense';
+        } else {
+            currentType = $('transactionType')?.value || 'expense';
         }
         
         let currentSelected = select.value;
         
+        select.innerHTML = '';
+        const relevantCategories = store.categories.filter(c => c.type === currentType);
+
         if (relevantCategories.length === 0) {
             const opt = document.createElement('option');
-            opt.value = defaultCategory;
-            opt.textContent = defaultCategory;
+            opt.value = 'Nezadáno';
+            opt.textContent = 'Nezadáno';
             select.appendChild(opt);
             return;
         }
@@ -1188,7 +1116,7 @@ function updateCategorySelects() {
         if (currentSelected && relevantCategories.some(c => c.name === currentSelected)) {
             select.value = currentSelected;
         } else {
-            select.value = relevantCategories.find(c => c.name === defaultCategory)?.name || relevantCategories[0]?.name || 'Nezadáno';
+            select.value = relevantCategories[0]?.name || 'Nezadáno';
         }
     });
 }
@@ -1234,10 +1162,10 @@ function addCategory() {
     saveStore();
     $('newCategoryName').value = '';
     renderCategories();
-    // Aktualizovat i výběry trvalých plateb a očekávaných příjmů
+    // Aktualizovat i výběry trvalých plateb
     updateCategorySelects();
     renderRecurringPaymentsManagement();
-    renderExpectedIncomeManagement(); // NOVÉ: Aktualizace správy
+    renderRecurringPaymentsGoalSection();
 }
 
 function deleteCategory(index, event) {
@@ -1245,7 +1173,7 @@ function deleteCategory(index, event) {
 
     const catToDelete = store.categories[index];
 
-    if (['Investice', 'Nezadáno', 'Jídlo', 'Výplata', 'Nájem/Bydlení', 'Volný čas', 'Bonus', 'Faktura'].includes(catToDelete.name)) {
+    if (['Investice', 'Nezadáno', 'Jídlo', 'Výplata', 'Nájem/Bydlení', 'Volný čas', 'Bonus'].includes(catToDelete.name)) {
         alert('Tuto výchozí/klíčovou kategorii nelze smazat.');
         return;
     }
@@ -1260,12 +1188,6 @@ function deleteCategory(index, event) {
         store.recurringPayments.forEach(r => {
             if (r.category === catToDelete.name) {
                 r.category = 'Nezadáno'; 
-            }
-        });
-        // Převedení očekávaných příjmů
-        store.expectedIncome.forEach(e => {
-            if (e.category === catToDelete.name) {
-                e.category = 'Výplata'; // Převedeme na "Výplata"
             }
         });
 
@@ -1312,7 +1234,6 @@ function addTransaction(){
 }
 
 /* BUDGET - transakční modal */
-// ... (Zůstává beze změny) ...
 let currentTransaction = null;
 
 function updateModalCategorySelect(currentType, currentCategoryName) {
@@ -1582,7 +1503,7 @@ function addInvestmentFromModal(){
 }
 
 /* ========================================================
-   TRVALÉ PLATBY - LOGIKA (PONECHÁNO Z PŮVODNÍHO KÓDU)
+   TRVALÉ PLATBY - LOGIKA (BOD 1)
    ======================================================== */
 
 // Pomocná funkce pro naplnění výběru dnů v měsíci
@@ -1618,7 +1539,7 @@ function addRecurringPayment() {
         amount: amount,
         dueDate: dueDate,
         category: category,
-        lastPaidDate: null, 
+        lastPaidDate: null, // Ukládáme jako string "YYYY-MM-DD" nebo null
     };
 
     store.recurringPayments.push(newPayment);
@@ -1629,12 +1550,12 @@ function addRecurringPayment() {
 
     renderRecurringPaymentsManagement();
     renderRecurringPaymentsGoalSection();
-    applyFilter(); 
+    applyFilter(); // Aktualizace přehledu
 }
 
 function renderRecurringPaymentsManagement() {
     fillRecurringDaySelects();
-    updateCategorySelects(); 
+    updateCategorySelects(); // Zajistí, že kategorie jsou načteny
     
     const list = $('recurringListManagement');
     list.innerHTML = '';
@@ -1644,16 +1565,20 @@ function renderRecurringPaymentsManagement() {
         return;
     }
 
+    // Získání aktuálního data
     const filterFrom = $('filterFrom').value ? new Date($('filterFrom').value) : new Date();
     const filterTo = $('filterTo').value ? new Date($('filterTo').value) : new Date();
     
+    // Nastavení konce filtru na konec dne pro přesné porovnání
     let filterToDate = new Date(filterTo);
     filterToDate.setDate(filterToDate.getDate() + 1); 
     filterToDate.setSeconds(filterToDate.getSeconds() - 1); 
     
+    // Pomocná funkce, která zjistí, zda byla platba uhrazena V AKTUÁLNÍM ROZSAHU FILTRU
     const isPaidInCurrentFilterPeriod = (payment) => {
         if (!payment.lastPaidDate) return false;
         const lastPaid = new Date(payment.lastPaidDate);
+        // Kontroluje, zda datum úhrady spadá do rozsahu filtru
         return lastPaid >= filterFrom && lastPaid <= filterToDate;
     };
 
@@ -1669,6 +1594,7 @@ function renderRecurringPaymentsManagement() {
 
         let buttonHtml = '';
         if (isPaid) {
+            // Platba je zaplacená v aktuálním období - tlačítko pro "znovuzapnutí"
             buttonHtml = `
                 <div style="text-align:right; margin-top:10px;">
                     <span style="color:var(--accent2); font-weight:700; margin-right:10px;">
@@ -1679,10 +1605,12 @@ function renderRecurringPaymentsManagement() {
                     </button>
                 </div>
             `;
-            item.style.borderLeftColor = 'var(--accent2)'; 
+            item.style.borderLeftColor = 'var(--accent2)'; // Zelená, že je v tomto období zaplaceno
         } else {
+            // Platba není zaplacená v aktuálním období - jen informace o poslední úhradě
             const lastPaidInfo = r.lastPaidDate ? formatDate(r.lastPaidDate) : 'Nezaplaceno';
             
+            // PŘIDÁNO: Tlačítko pro Rychlé Zaplacení i do Správy (pro pohodlí)
             const payButton = `<button class="btn" style="background:var(--danger);" onclick="event.stopPropagation(); markRecurringPaymentAsPaid('${r.id}')"><i class="fa fa-check"></i> Zaplatit</button>`;
 
             buttonHtml = `
@@ -1691,7 +1619,7 @@ function renderRecurringPaymentsManagement() {
                     ${payButton}
                 </div>
             `;
-            item.style.borderLeftColor = '#ff9900'; 
+            item.style.borderLeftColor = '#ff9900'; // Oranžová, že je k úhradě
         }
 
         item.innerHTML = `
@@ -1708,11 +1636,13 @@ function renderRecurringPaymentsManagement() {
     });
 }
 
+// NOVÁ FUNKCE: Znovu Zapnout (nastaví lastPaidDate na null)
 function reactivateRecurringPayment(id) {
     const payment = store.recurringPayments.find(r => r.id === id);
     if (!payment) return;
 
     if (confirm(`Opravdu chcete platbu "${payment.name}" nastavit jako NEUHRAZENOU pro aktuální období? Vytvořená transakce ZŮSTANE v rozpočtu - musíte ji smazat ručně.`)) {
+        // Nastavíme lastPaidDate na null, což znamená, že je potřeba ji znova zaplatit.
         payment.lastPaidDate = null; 
         saveStore();
         
@@ -1791,6 +1721,7 @@ function renderRecurringPaymentsGoalSection() {
     const list = $('recurringPaymentsGoalList');
     list.innerHTML = '';
     
+    // Získání nezaplacených plateb pro aktuální období filtru
     const upcoming = getUpcomingPayments($('filterFrom').value, $('filterTo').value);
     
     if (upcoming.length === 0) {
@@ -1802,7 +1733,7 @@ function renderRecurringPaymentsGoalSection() {
         const item = document.createElement('div');
         item.className = 'goal-item card recurring-payment-card';
         item.style.marginBottom = '10px';
-        item.style.borderLeftColor = '#ff9900'; 
+        item.style.borderLeftColor = '#ff9900'; // Vždy oranžová, protože je k úhradě
         
         item.innerHTML = `
             <div style="display:flex;justify-content:space-between;align-items:center;">
@@ -1821,6 +1752,7 @@ function renderRecurringPaymentsGoalSection() {
     });
 }
 
+// NOVÁ FUNKCE: Označení platby jako uhrazené (vytvoří transakci)
 function markRecurringPaymentAsPaid(id) {
     const payment = store.recurringPayments.find(r => r.id === id);
     if (!payment) return;
@@ -1851,183 +1783,47 @@ function markRecurringPaymentAsPaid(id) {
     
     renderRecurringPaymentsGoalSection();
     applyFilter();
-    renderRecurringPaymentsManagement(); 
+    renderRecurringPaymentsManagement(); // Aktualizace i Správy
 }
 
 
+// NOVÁ FUNKCE: ZÍSKÁNÍ NEUHRAZENÝCH PLATEB V RÁMCI AKTUÁLNÍHO FILTRU
 function getUpcomingPayments(filterFrom, filterTo) {
     if (!filterFrom || !filterTo) return [];
     
     const fDate = new Date(filterFrom);
     const tDate = new Date(filterTo);
+    // Nastavíme konec filtru na konec dne pro přesné porovnání
     let filterToDate = new Date(tDate);
     filterToDate.setDate(filterToDate.getDate() + 1); 
     filterToDate.setSeconds(filterToDate.getSeconds() - 1); 
 
+    // Jednoduchá kontrola: Platba je "upcoming" pokud:
+    // 1. Její lastPaidDate NENÍ v aktuálním filtračním období.
+    // 2. A zároveň teoretický den splatnosti (např. 15. v daném měsíci filtru) spadá do rozsahu filtru.
+    
+    // Pro zjednodušení použijeme pouze kontrolu, zda byla uhrazena v daném filtru.
+    // Tím se zajistí, že se nezobrazí po zaplacení, dokud se nezmění filtr.
+
     return store.recurringPayments.filter(r => {
         const lastPaidDate = r.lastPaidDate ? new Date(r.lastPaidDate) : null;
+        
+        // Zkontrolovat, zda poslední úhrada NENÍ v rozsahu filtru
         const isPaidInCurrentFilter = lastPaidDate && lastPaidDate >= fDate && lastPaidDate <= filterToDate;
+
         if (isPaidInCurrentFilter) {
-            return false; 
+            return false; // Již zaplaceno pro toto období filtru
         }
+        
+        // Dále bychom měli zkontrolovat, zda by platba MĚLA být zaplacena v tomto období.
+        // Zde je malý hack: Zjišťujeme jen, zda je v aktuálním filtru.
+        // Tzn. pokud změníte filtr na minulé 3 měsíce a platba nebyla za 3 měsíce zaplacena, zobrazí se.
+        // Pro správnou simulaci, zda je splatná, je potřeba pokročilejší logika (např. poslední den v měsíci)
+        
+        // Pro jednoduchost implementace: Zobrazujeme, pokud NENÍ uhrazena V TOMTO období.
+        
         return true; 
     });
-}
-
-
-/* ========================================================
-   OČEKÁVANÉ PŘÍJMY - LOGIKA (NOVÉ)
-   ======================================================== */
-
-function addExpectedIncome() {
-    const name = $('newExpectedName').value.trim();
-    const amount = parseFloat($('newExpectedAmount').value);
-    const category = $('newExpectedCategory').value;
-
-    if (!name || isNaN(amount) || amount <= 0) {
-        alert('Vyplňte prosím název a platnou částku.');
-        return;
-    }
-
-    const newExpected = {
-        id: Math.random().toString(36).substring(2, 9),
-        name: name,
-        amount: amount,
-        category: category,
-    };
-
-    store.expectedIncome.push(newExpected);
-    saveStore();
-
-    $('newExpectedName').value = '';
-    $('newExpectedAmount').value = '';
-
-    renderExpectedIncomeManagement();
-    applyFilter(); // Aktualizace přehledu
-}
-
-function renderExpectedIncomeManagement() {
-    updateCategorySelects();
-    
-    const list = $('expectedIncomeListManagement');
-    list.innerHTML = '';
-
-    if (store.expectedIncome.length === 0) {
-        list.innerHTML = '<div class="muted">Zatím nebyly přidány žádné očekávané příjmy.</div>';
-        return;
-    }
-
-    store.expectedIncome.forEach(e => {
-        const item = document.createElement('div');
-        item.className = 'card expected-income-card';
-        item.style.marginBottom = '10px';
-        item.style.cursor = 'pointer';
-        item.onclick = () => openExpectedModal(e.id);
-
-        const confirmButton = `<button class="btn" style="background:var(--accent2);" onclick="event.stopPropagation(); confirmExpectedIncome('${e.id}')"><i class="fa fa-check"></i> Potvrdit příjem</button>`;
-        const editButton = `<button class="btn secondary action-small" style="margin-right:10px;" onclick="event.stopPropagation(); openExpectedModal('${e.id}')"><i class="fa fa-edit"></i> Upravit</button>`;
-
-        item.innerHTML = `
-            <div style="display:flex;justify-content:space-between;align-items:center;">
-                <div style="font-weight:700; color:var(--text);">${e.name}</div>
-                <div style="font-weight:700; color:var(--accent2);">${formatAmount(e.amount)}</div>
-            </div>
-            <div class="muted" style="margin-top:5px; font-size:0.9em;">
-                Kategorie: ${e.category}
-            </div>
-            <div style="display:flex; justify-content:flex-end; align-items:center; margin-top:10px;">
-                ${editButton}
-                ${confirmButton}
-            </div>
-        `;
-        list.appendChild(item);
-    });
-}
-
-function openExpectedModal(id) {
-    currentExpected = store.expectedIncome.find(e => e.id === id);
-    if (!currentExpected) return;
-
-    updateCategorySelects();
-
-    $('modalExpectedTitle').innerHTML = `<i class="fa fa-edit"></i> Úprava příjmu: ${currentExpected.name}`;
-    $('modalEName').value = currentExpected.name;
-    $('modalEAmount').value = currentExpected.amount;
-    $('modalECategory').value = currentExpected.category;
-
-    $('modalEDeleteBtn').onclick = () => deleteExpectedIncome(currentExpected.id);
-    
-    $('expectedModal').style.display = 'flex';
-}
-
-function saveExpectedProfile() {
-    if (!currentExpected) return;
-
-    const name = $('modalEName').value.trim();
-    const amount = parseFloat($('modalEAmount').value);
-    const category = $('modalECategory').value;
-
-    if (!name || isNaN(amount) || amount <= 0) {
-        alert('Vyplňte prosím název a platnou částku.');
-        return;
-    }
-
-    const index = store.expectedIncome.findIndex(e => e.id === currentExpected.id);
-    if (index !== -1) {
-        store.expectedIncome[index] = {
-            ...store.expectedIncome[index],
-            name: name,
-            amount: amount,
-            category: category,
-        };
-    }
-
-    saveStore();
-    closeModal('expectedModal');
-    renderExpectedIncomeManagement();
-    applyFilter();
-}
-
-function deleteExpectedIncome(id) {
-    if (confirm('Opravdu chcete tento očekávaný příjem smazat?')) {
-        store.expectedIncome = store.expectedIncome.filter(e => e.id !== id);
-        saveStore();
-        closeModal('expectedModal');
-        renderExpectedIncomeManagement();
-        applyFilter();
-    }
-}
-
-function confirmExpectedIncome(id) {
-    const expected = store.expectedIncome.find(e => e.id === id);
-    if (!expected) return;
-
-    if (!confirm(`Opravdu chcete potvrdit příjem ${formatAmount(expected.amount)} za "${expected.name}"? Tímto se příjem **přičte** k Vašemu rozpočtu a vytvoří se transakce.`)) {
-        return;
-    }
-    
-    const today = new Date().toISOString().slice(0, 10);
-    
-    // 1. Vytvoření transakce
-    const newTransaction = {
-        id: Math.random().toString(36).substring(2, 9),
-        date: today,
-        desc: `Očekávaný příjem: ${expected.name}`,
-        amount: expected.amount, 
-        type: 'income',
-        category: expected.category,
-    };
-    store.transactions.push(newTransaction);
-
-    // 2. Odstranění z očekávaných příjmů
-    store.expectedIncome = store.expectedIncome.filter(e => e.id !== id);
-
-    saveStore();
-    
-    alert(`Příjem za "${expected.name}" byl potvrzen a přičten k rozpočtu.`);
-    
-    renderExpectedIncomeManagement();
-    applyFilter(); 
 }
 
 
@@ -2043,13 +1839,8 @@ function renderTransactionTable(transactions){
     // 1. Získání nezaplacených trvalých plateb
     const upcomingPayments = getUpcomingPayments($('filterFrom').value, $('filterTo').value);
     let upcomingPaymentsTotal = upcomingPayments.reduce((sum, p) => sum + p.amount, 0);
-    
-    // 2. Získání očekávaných příjmů
-    const expectedIncome = store.expectedIncome; // Očekávané příjmy se filtrují až po potvrzení
-    let expectedIncomeTotal = expectedIncome.reduce((sum, p) => sum + p.amount, 0);
 
-
-    // 3. Vykreslení detailu nezaplacených plateb
+    // 2. Vykreslení detailu nezaplacených plateb (pod hlavním panelem)
     const upcomingDetail = $('upcomingPaymentsDetail');
     const upcomingList = $('upcomingPaymentsList');
     upcomingList.innerHTML = '';
@@ -2071,30 +1862,6 @@ function renderTransactionTable(transactions){
         });
     } else {
         upcomingDetail.style.display = 'none';
-    }
-    
-    // 4. Vykreslení detailu očekávaných příjmů (NOVÉ)
-    const expectedDetail = $('expectedIncomeDetail');
-    const expectedList = $('expectedIncomeList');
-    expectedList.innerHTML = '';
-    
-    if (expectedIncome.length > 0) {
-        expectedDetail.style.display = 'block';
-        expectedIncome.forEach(e => {
-             const item = document.createElement('div');
-             item.className = 'upcoming-item';
-             item.innerHTML = `
-                 <div>
-                     <i class="fa fa-money-bill-wave" style="color:var(--upcoming-income);"></i> 
-                     <strong>${e.name}</strong> 
-                     <span class="muted" style="font-size:0.9em;">(Kat: ${e.category})</span>
-                 </div>
-                 <div style="font-weight:700; color:var(--accent2);">${formatAmount(e.amount)}</div>
-             `;
-             expectedList.appendChild(item);
-        });
-    } else {
-        expectedDetail.style.display = 'none';
     }
 
 
@@ -2136,43 +1903,26 @@ function renderTransactionTable(transactions){
         tbody.appendChild(tr);
     });
     
-    // 5. Vykreslení celkového zůstatku a indikátorů
+    // 3. Vykreslení celkového zůstatku a indikátoru
     const balanceEl = $('totalBalance');
     const upcomingSumEl = $('upcomingPaymentsSum');
     const upcomingAmountTextEl = $('upcomingAmountText');
-    const expectedIncomeSumEl = $('expectedIncomeSum'); // NOVÉ
-    const expectedAmountTextEl = $('expectedAmountText'); // NOVÉ
     
-    // NOVÝ VÝPOČET ZŮSTATKU s očekávanými příjmy
-    const totalBalanceWithExpected = totalBalance + expectedIncomeTotal;
-    
-    balanceEl.textContent = formatAmount(totalBalanceWithExpected); 
-    balanceEl.style.color = totalBalanceWithExpected >= 0 ? 'var(--accent2)' : 'var(--danger)';
+    balanceEl.textContent = formatAmount(totalBalance); 
+    balanceEl.style.color = totalBalance >= 0 ? 'var(--accent2)' : 'var(--danger)';
     
     // Oranžový indikátor trvalých plateb
     if (upcomingPaymentsTotal > 0) {
         upcomingAmountTextEl.textContent = formatAmount(upcomingPaymentsTotal);
         upcomingSumEl.style.display = 'inline-flex';
         // Změna barvy zůstatku na žlutou, pokud je zůstatek > 0, ale po odečtení by byl záporný
-        if (totalBalanceWithExpected > 0 && (totalBalanceWithExpected - upcomingPaymentsTotal) < 0) {
+        if (totalBalance > 0 && (totalBalance - upcomingPaymentsTotal) < 0) {
             balanceEl.style.color = '#ff9900';
-        } else if (totalBalanceWithExpected <= 0) {
+        } else if (totalBalance <= 0) {
             // Pokud je zůstatek už záporný, necháme červenou, ale indikátor tam je
         }
     } else {
         upcomingSumEl.style.display = 'none';
-    }
-    
-    // Indikátor očekávaných příjmů
-    if (expectedIncomeTotal > 0) {
-        expectedAmountTextEl.textContent = formatAmount(expectedIncomeTotal);
-        expectedIncomeSumEl.style.display = 'inline-flex';
-        // Změna barvy zůstatku na žluto-zelenou, pokud je očekávaný příjem v plusu
-        if (totalBalanceWithExpected > totalBalance) {
-            balanceEl.style.color = 'var(--upcoming-income)';
-        }
-    } else {
-        expectedIncomeSumEl.style.display = 'none';
     }
 
 
@@ -2208,12 +1958,15 @@ function applyFilter(){
     }
     
     renderTransactionTable(filtered);
+    // Aktualizovat i sekci cílů s platbami, které závisí na filtru
     if(document.querySelector('.footer-nav button[data-section="goals"]').classList.contains('active')) renderRecurringPaymentsGoalSection();
+    
+    // Spustíme computeStats, pokud je sekce Analýza aktivní (BOD 2)
     if(document.querySelector('.footer-nav button[data-section="stats"]').classList.contains('active')) computeStats();
+    
+    // DŮLEŽITÉ: Aktualizace Správy trvalých plateb při změně filtru
     if(document.querySelector('.footer-nav button[data-section="settings"]').classList.contains('active')) renderRecurringPaymentsManagement();
 
-    // NOVÉ: Aktualizace správy očekávaných příjmů, která ovlivňuje zůstatek
-    if(document.querySelector('.footer-nav button[data-section="settings"]').classList.contains('active')) renderExpectedIncomeManagement();
 }
 
 function applySort(){
@@ -2494,14 +2247,7 @@ function clearAll(){
 }
 
 function exportAllJSON(){
-    // Přidání expectedIncome do exportu
-    const data = JSON.stringify(store, (key, value) => {
-        if (key === 'expectedIncome' || key === 'recurringPayments' || key === 'cards' || key === 'transactions' || key === 'goals' || key === 'categories' || key === 'currency' || key === 'exchangeRate') {
-            return value;
-        }
-        return undefined;
-    }, 2);
-    
+    const data = JSON.stringify(store, null, 2);
     const blob = new Blob([data], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -2526,8 +2272,7 @@ function importAllJSON(event){
                 localStorage.setItem(LS_GOALS, JSON.stringify(importedStore.goals || []));
                 localStorage.setItem(LS_CATEGORIES, JSON.stringify(importedStore.categories || []));
                 localStorage.setItem(LS_CARDS, JSON.stringify(importedStore.cards || [])); 
-                localStorage.setItem(LS_RECURRING_PAYMENTS, JSON.stringify(importedStore.recurringPayments || [])); 
-                localStorage.setItem(LS_EXPECTED_INCOME, JSON.stringify(importedStore.expectedIncome || [])); // Nový import
+                localStorage.setItem(LS_RECURRING_PAYMENTS, JSON.stringify(importedStore.recurringPayments || [])); // Nový import
                 localStorage.setItem(LS_CURRENCY, importedStore.currency || 'CZK');
                 localStorage.setItem(LS_EXCHANGE_RATE, importedStore.exchangeRate || 1);
                 
@@ -2574,8 +2319,7 @@ function redrawAll(){
   renderCategories(); 
   renderGoals(); 
   renderCards(); 
-  fillRecurringDaySelects(); 
-  renderExpectedIncomeManagement(); // NOVÉ: inicializace správy očekávaných příjmů
+  fillRecurringDaySelects(); // Inicializace dnů
   
   // Zobrazení defaultní sekce a aktivace nav tlačítka
   document.querySelectorAll('main section').forEach(s => s.style.display = 'none');
