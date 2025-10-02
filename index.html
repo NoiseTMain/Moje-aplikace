@@ -35,6 +35,8 @@
     
     /* NOVÉ: Blur pro Card Stack */
     --card-blur: rgba(255, 255, 255, 0.15); 
+    /* NOVÉ: Blur pro zablurování */
+    --blur-strength: blur(4px);
   }
   /* ÚPRAVA TMAVÉHO REŽIMU */
   [data-theme='dark']{
@@ -340,6 +342,8 @@
       
       /* Defaultní styl */
       background: var(--amex-platinum); 
+      background-size: cover; /* Důležité pro gradienty */
+      background-position: center;
   }
   
   /* STYLY PRO KARETNI STACK (PŘEKRYTÍ) */
@@ -378,14 +382,31 @@
   }
 
   /* Specifické styly pro typy karet */
-  /* POZOR: Původní gradienty jsou nyní použity jako `background-image` 
-     a doplňují `background-color: var(--card-blur);` */
   .amex-gold-card { background-image: var(--amex-gold); }
   .amex-platinum-card { background-image: var(--amex-platinum); }
-  
-  /* Použití opacity pro Visa/Mastercard loga, pokud jsou v card designu */
   .visa-card { background-image: var(--visa-blue); }
   .mastercard-card { background-image: var(--mastercard-red); }
+
+  /* ZABLURROVANÝ STYL PRO DETAIL */
+  .blur-text {
+      filter: var(--blur-strength);
+      transition: filter 0.3s;
+      user-select: none; /* Nejde označit/zkopírovat */
+  }
+  /* Odstranění bluru při hoveru na kopírovací tlačítko, aby uživatel viděl, co kopíruje */
+  .card-copy-btn:hover + .blur-text,
+  .card-copy-btn:hover .blur-text {
+      filter: none;
+  }
+
+  /* ZABLURROVANÉ ČÍSLO KARTY */
+  .card-number-blurry .blurry-part {
+      filter: var(--blur-strength);
+  }
+  /* Odstranění bluru při hoveru na kopírovací tlačítko */
+  .card-number-blurry:has(button:hover) .blurry-part {
+      filter: none;
+  }
 
 
   .amex-card-header{
@@ -479,6 +500,11 @@
       display: block;
       margin-bottom: 5px;
   }
+  /* Speciální styl pro CVV/CVC, aby byl vedle platnosti */
+  .card-valid-thru .cvc-wrap {
+      display:flex; align-items:center; margin-top:5px;
+  }
+  
   .card-copy-status {
       position: fixed; /* Fixní zobrazení notifikace */
       top: 50%;
@@ -506,6 +532,9 @@
       .filter-item .btn { flex-basis: 100%; margin-top: 10px; }
       
       .amex-card { width: 95%; padding: 20px; }
+      /* Aby se vešly 4 sloupce */
+      .card-add-form .form-row > * { flex-basis: 100%; }
+      .card-add-form .form-row > input[type=text], .card-add-form .form-row > select { flex-basis: 100%; }
   }
   @media(max-width:350px){
       .footer-nav button span { display:none; }
@@ -566,6 +595,50 @@
       border-bottom: 1px solid var(--border);
       padding-bottom: 5px;
   }
+  
+  /* Styl pro Banky v sekci Karty */
+  .bank-list-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 15px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg);
+      margin-top: 8px;
+      border-radius: 8px;
+      font-weight: 600;
+  }
+  .bank-list-item:hover {
+       background: var(--border);
+  }
+  .bank-list-item:first-child { margin-top: 0; }
+  .bank-balance {
+      font-size: 1.1em;
+      font-weight: 700;
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      gap: 5px;
+  }
+  
+  /* Nový styl pro celkový zůstatek na kartách v sekci Účet */
+  .card-balance-summary {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 15px;
+      margin-bottom: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-weight: 600;
+      box-shadow: var(--shadow);
+  }
+  .card-balance-summary .value {
+      font-size: 1.5em;
+      font-weight: 900;
+      color: var(--accent);
+  }
 
 
 </style>
@@ -594,6 +667,11 @@
 <main class="wrap">
 
   <section id="section-budget">
+    <div class="card-balance-summary" id="cardBalanceSummary" style="display:none;">
+        <div class="muted"><i class="fa fa-credit-card"></i> Celkový zůstatek na kartách:</div>
+        <div class="value" id="totalCardBalance">0 Kč</div>
+    </div>
+    
     <div class="topbar">
       <div class="filter-bar">
         <div class="filter-item">
@@ -675,22 +753,43 @@
   </section>
   
   <section id="section-cards" style="display:none">
-    <div class="card">
-        <h2><i class="fa fa-credit-card" style="color:var(--accent)"></i> Moje Karty (Bankovní Přehled)</h2>
-        <div class="muted">Karty se zobrazují jako balíček pro přehledný pohled. Kliknutím na ikonu zkopírujete údaj.</div>
+    <div class="card" style="margin-bottom: 20px;">
+        <h2><i class="fa fa-plus-circle" style="color:var(--accent)"></i> Přidat Banku a Kartu</h2>
+        <div class="muted">Nejprve přidejte banku, poté k ní můžete přidat platební kartu.</div>
+        
+        <div style="margin-top:20px; border-bottom: 1px solid var(--border); padding-bottom: 15px;">
+            <h3 style="margin-bottom:10px;"><i class="fa fa-university"></i> Správa bankovních účtů</h3>
+            <div class="form-row">
+                <input type="text" id="newBankName" placeholder="Název banky (např. 'ČSOB')" style="flex-grow:1"/>
+                <input type="number" id="newBankBalance" placeholder="Aktuální zůstatek (Kč)"/>
+                <button class="btn" onclick="addBank()"><i class="fa fa-plus"></i> Přidat Banku</button>
+            </div>
+            <div id="banksList" style="margin-top: 10px;"></div>
+        </div>
 
-        <div class="form-row" style="margin-top:20px">
+        <h3 style="margin-top:20px;"><i class="fa fa-credit-card"></i> Přidat kartu k účtu</h3>
+        <div class="muted">Zvolte typ a banku, ke které karta patří.</div>
+        
+        <div class="form-row card-add-form" style="margin-top:20px">
+            <select id="newCardBank" style="flex-grow:1; min-width:150px;">
+                 <option value="" disabled selected>Zvolte banku...</option>
+            </select>
             <select id="newCardType" style="flex-grow:0;">
                 <option value="visa">Visa</option>
                 <option value="mastercard">MasterCard</option>
-                <option value="amex-platinum">American Express Platinum (Demo)</option>
+                <option value="amex-platinum">American Express (Demo)</option>
             </select>
             <input type="text" id="newCardNumber" placeholder="Číslo karty (16-19 číslic)" style="flex-basis: 200px;"/>
             <input type="text" id="newCardExpiry" placeholder="MM/YY" style="flex-basis: 80px;"/>
-            <input type="text" id="newCardCVV" placeholder="CVV" style="flex-basis: 60px;"/>
+            <input type="text" id="newCardCVV" placeholder="CVV/CVC" style="flex-basis: 60px;"/>
             <input type="text" id="newCardOwner" placeholder="Jméno (JOHN DOE)"/>
-            <button class="btn" onclick="addCard()"><i class="fa fa-plus"></i> Přidat</button>
+            <button class="btn" onclick="addCard()"><i class="fa fa-plus"></i> Uložit Kartu</button>
         </div>
+    </div>
+    
+    <div class="card">
+        <h2><i class="fa fa-credit-card" style="color:var(--accent)"></i> Moje Karty (Přehled)</h2>
+        <div class="muted">Karty se zobrazují jako balíček pro přehledný pohled. Kliknutím na <i class="fa fa-copy"></i> zkopírujete údaj.</div>
 
         <div id="cardsList" class="card-container-wrap">
              </div>
@@ -898,8 +997,6 @@
 
 
 <script>
-// PŮVODNÍ KÓD ZŮSTÁVÁ, OPRAVENÁ A ROZŠÍŘENÁ LOGIKA NÍŽE
-
 /* =========================
    Storage & data model
    ========================= */
@@ -908,15 +1005,17 @@ const LS_GOALS = 'finance_goals_v1';
 const LS_CATEGORIES = 'finance_categories_v1'; 
 const LS_CURRENCY = 'finance_currency_v1';
 const LS_EXCHANGE_RATE = 'finance_exchange_rate_v1';
-const LS_CARDS = 'finance_cards_v2'; 
-const LS_RECURRING_PAYMENTS = 'finance_recurring_payments_v1'; // NOVÁ KONSTANTA
+const LS_CARDS = 'finance_cards_v3'; // ZVÝŠENÁ VERZE
+const LS_RECURRING_PAYMENTS = 'finance_recurring_payments_v1'; 
+const LS_BANKS = 'finance_banks_v1'; // NOVÁ KONSTANTA PRO BANKY
 
 let store = {
   transactions: [], 
   goals: [],        
   categories: [],   
   cards: [], 
-  recurringPayments: [], // NOVÉ: trvalé platby
+  recurringPayments: [], 
+  banks: [], // NOVÉ POLE PRO BANKY
   currency: 'CZK',
   exchangeRate: 1, 
 };
@@ -944,12 +1043,19 @@ function loadStore(){
     }));
     else store.cards = [];
     
-    // NAČTENÍ TRVALÝCH PLATEB
+    // NAČTENÍ BANK
+    const rawBanks = localStorage.getItem(LS_BANKS);
+    if(rawBanks) store.banks = JSON.parse(rawBanks).map(b => ({
+        ...b, 
+        id: b.id || Math.random().toString(36).substring(2, 9),
+        balance: parseFloat(b.balance) || 0, // Převod na číslo
+    }));
+    else store.banks = [];
+
     const rawR = localStorage.getItem(LS_RECURRING_PAYMENTS);
     if(rawR) store.recurringPayments = JSON.parse(rawR).map(r => ({
         ...r, 
         id: r.id || Math.random().toString(36).substring(2, 9),
-        // Zajištění, že lastPaidDate je Date (nebo null)
         lastPaidDate: r.lastPaidDate ? r.lastPaidDate : null 
     }));
     else store.recurringPayments = [];
@@ -984,7 +1090,8 @@ function loadStore(){
     store.transactions = [];
     store.goals = [];
     store.cards = []; 
-    store.recurringPayments = []; // Reset i pro nové pole
+    store.banks = []; // Reset i pro banky
+    store.recurringPayments = []; 
     store.categories = [ { name: 'Nezadáno', type: 'expense' } ];
     store.currency = 'CZK';
     store.exchangeRate = 1;
@@ -997,12 +1104,13 @@ function saveStore(){
   localStorage.setItem(LS_CURRENCY, store.currency);
   localStorage.setItem(LS_EXCHANGE_RATE, store.exchangeRate.toFixed(4));
   localStorage.setItem(LS_CARDS, JSON.stringify(store.cards)); 
-  localStorage.setItem(LS_RECURRING_PAYMENTS, JSON.stringify(store.recurringPayments)); // ULOŽENÍ TRVALÝCH PLATEB
+  localStorage.setItem(LS_RECURRING_PAYMENTS, JSON.stringify(store.recurringPayments));
+  localStorage.setItem(LS_BANKS, JSON.stringify(store.banks)); // Uložení bank
 }
 
 /* helpers */
 function $(id){return document.getElementById(id)}
-function closeModal(id){ $(id).style.display = 'none'; currentTransaction = null; currentGoal = null; currentRecurring = null; } // Přidána nová proměnná
+function closeModal(id){ $(id).style.display = 'none'; currentTransaction = null; currentGoal = null; currentRecurring = null; } 
 let currentRecurring = null;
 
 
@@ -1046,9 +1154,11 @@ function changeCurrency(){
     saveStore();
     applyFilter();
     renderGoals();
-    renderRecurringPaymentsGoalSection(); // Znovu vykreslit trvalé platby
+    renderRecurringPaymentsGoalSection(); 
     if(document.querySelector('.footer-nav button[data-section="stats"]').classList.contains('active')) computeStats();
     if(document.querySelector('.footer-nav button[data-section="history"]').classList.contains('active')) renderHistory();
+    // NOVÉ: Vykreslení zůstatků karet
+    renderBanks();
 }
 
 
@@ -1146,7 +1256,7 @@ function renderMonthOptions() {
     applyMonthFilter(); 
 }
 
-/* SPRÁVA KATEGORIÍ */
+/* SPRÁVA KATEGORIÍ - Beze změny */
 function updateCategorySelects() {
     const selects = [$('transactionCategory'), $('modalTCategory'), $('newRecurringCategory'), $('modalRCategory')];
     
@@ -1290,7 +1400,7 @@ function deleteCategory(index, event) {
 }
 
 
-/* BUDGET - přidání transakce */
+/* BUDGET - přidání transakce - Beze změny */
 function addTransaction(){
     const date = $('transactionDate').value;
     const desc = $('transactionDesc').value.trim();
@@ -1322,7 +1432,7 @@ function addTransaction(){
     renderMonthOptions(); 
 }
 
-/* BUDGET - transakční modal */
+/* BUDGET - transakční modal - Beze změny */
 let currentTransaction = null;
 
 function updateModalCategorySelect(currentType, currentCategoryName) {
@@ -1418,7 +1528,7 @@ function deleteTransaction(id){
 }
 
 
-/* GOALS - Ponecháno (OPRAVA BODU 3) */
+/* GOALS - Ponecháno (OPRAVA BODU 3) - Beze změny */
 function addGoal(){
     const name = $('newGoalName').value.trim();
     const target = parseFloat($('newGoalTarget').value);
@@ -1592,7 +1702,7 @@ function addInvestmentFromModal(){
 }
 
 /* ========================================================
-   TRVALÉ PLATBY - LOGIKA (BOD 1)
+   TRVALÉ PLATBY - LOGIKA (BOD 1) - Beze změny
    ======================================================== */
 
 // Pomocná funkce pro naplnění výběru dnů v měsíci
@@ -1889,11 +1999,7 @@ function getUpcomingPayments(filterFrom, filterTo) {
 
     // Jednoduchá kontrola: Platba je "upcoming" pokud:
     // 1. Její lastPaidDate NENÍ v aktuálním filtračním období.
-    // 2. A zároveň teoretický den splatnosti (např. 15. v daném měsíci filtru) spadá do rozsahu filtru.
     
-    // Pro zjednodušení použijeme pouze kontrolu, zda byla uhrazena v daném filtru.
-    // Tím se zajistí, že se nezobrazí po zaplacení, dokud se nezmění filtr.
-
     return store.recurringPayments.filter(r => {
         const lastPaidDate = r.lastPaidDate ? new Date(r.lastPaidDate) : null;
         
@@ -1903,13 +2009,6 @@ function getUpcomingPayments(filterFrom, filterTo) {
         if (isPaidInCurrentFilter) {
             return false; // Již zaplaceno pro toto období filtru
         }
-        
-        // Dále bychom měli zkontrolovat, zda by platba MĚLA být zaplacena v tomto období.
-        // Zde je malý hack: Zjišťujeme jen, zda je v aktuálním filtru.
-        // Tzn. pokud změníte filtr na minulé 3 měsíce a platba nebyla za 3 měsíce zaplacena, zobrazí se.
-        // Pro správnou simulaci, zda je splatná, je potřeba pokročilejší logika (např. poslední den v měsíci)
-        
-        // Pro jednoduchost implementace: Zobrazujeme, pokud NENÍ uhrazena V TOMTO období.
         
         return true; 
     });
@@ -2016,6 +2115,9 @@ function renderTransactionTable(transactions){
 
 
     document.querySelector('#mainTable thead th:nth-child(4)').textContent = 'Částka (' + store.currency + ')';
+    
+    // NOVÉ: Vykreslení celkového zůstatku na kartách
+    renderCardBalanceSummary();
 }
 
 function applyFilter(){
@@ -2224,19 +2326,151 @@ function renderHistory(){
     });
 }
 
+/* ========================================================
+   NOVÁ LOGIKA - BANKY A KARTY
+   ======================================================== */
 
+// 1. Správa bank
+function addBank() {
+    const name = $('newBankName').value.trim();
+    const balance = parseFloat($('newBankBalance').value) || 0;
+
+    if (!name) {
+        alert('Zadejte prosím název banky.');
+        return;
+    }
+    if (store.banks.some(b => b.name.toLowerCase() === name.toLowerCase())) {
+        alert('Tato banka již existuje.');
+        return;
+    }
+
+    const newBank = {
+        id: Math.random().toString(36).substring(2, 9),
+        name: name,
+        balance: balance,
+    };
+
+    store.banks.push(newBank);
+    saveStore();
+
+    $('newBankName').value = '';
+    $('newBankBalance').value = '';
+
+    renderBanks();
+}
+
+function deleteBank(id) {
+    if (confirm('Opravdu chcete tuto banku smazat? Všechny karty k ní připojené budou smazány.')) {
+        store.banks = store.banks.filter(b => b.id !== id);
+        store.cards = store.cards.filter(c => c.bankId !== id);
+        saveStore();
+        renderBanks();
+        renderCards(); // Aktualizace přehledu karet
+    }
+}
+
+function updateBankBalance(id, newBalance) {
+    const bank = store.banks.find(b => b.id === id);
+    if (bank) {
+        bank.balance = parseFloat(newBalance) || 0;
+        saveStore();
+        renderBanks(); // Znovu vykreslit seznam bank
+    }
+}
+
+function renderBanks() {
+    const list = $('banksList');
+    list.innerHTML = '';
+    const bankSelect = $('newCardBank');
+    bankSelect.innerHTML = '<option value="" disabled selected>Zvolte banku...</option>';
+    
+    let totalBalance = 0;
+
+    if (store.banks.length === 0) {
+        list.innerHTML = '<div class="muted">Zatím nebyly přidány žádné banky.</div>';
+    } else {
+        store.banks.forEach(b => {
+            totalBalance += b.balance;
+            
+            // 1. Seznam bank
+            const item = document.createElement('div');
+            item.className = 'bank-list-item';
+            
+            const bankCardCount = store.cards.filter(c => c.bankId === b.id).length;
+            
+            item.innerHTML = `
+                <div>
+                    <i class="fa fa-university" style="color:var(--accent)"></i> 
+                    <strong>${b.name}</strong> 
+                    <span class="muted" style="font-size:0.9em;">(${bankCardCount} karet)</span>
+                </div>
+                <div class="bank-balance">
+                    <input type="number" value="${b.balance}" 
+                           onchange="updateBankBalance('${b.id}', this.value)" 
+                           style="width: 100px; padding: 5px; text-align: right; margin-right: 5px;"/>
+                    ${formatAmount(0)}
+                    <button class="btn danger action-small" onclick="deleteBank('${b.id}')"><i class="fa fa-trash"></i></button>
+                </div>
+            `;
+            // Musíme odstranit původní hodnotu zobrazení měny, jelikož ji handleuje input
+            item.querySelector('.bank-balance').childNodes[2].textContent = formatAmount(0).replace('0', '').replace('€', '').replace('Kč', '').trim();
+            list.appendChild(item);
+
+            // 2. Select pro přidání karty
+            const opt = document.createElement('option');
+            opt.value = b.id;
+            opt.textContent = b.name;
+            bankSelect.appendChild(opt);
+        });
+    }
+    
+    // Zobrazení celkového zůstatku v sekci Účet
+    renderCardBalanceSummary(totalBalance);
+}
+
+// 2. Vykreslení celkového zůstatku do sekce Účet
+function renderCardBalanceSummary(totalBalance) {
+    const summaryEl = $('cardBalanceSummary');
+    const totalEl = $('totalCardBalance');
+
+    // Pokud není předána hodnota, spočítáme ji z úložiště
+    const finalTotal = totalBalance !== undefined ? totalBalance : store.banks.reduce((sum, b) => sum + b.balance, 0);
+
+    if (finalTotal > 0 || store.banks.length > 0) {
+        summaryEl.style.display = 'flex';
+        totalEl.textContent = formatAmount(finalTotal);
+    } else {
+        summaryEl.style.display = 'none';
+    }
+}
+
+
+// 3. Správa karet
 function renderCards(){
+    renderBanks(); // Aby byl aktuální select bank
     const list = $('cardsList');
     list.innerHTML = '';
     
-    // Funkce pro simulaci kopírování do schránky
-    window.copyToClipboard = (text, type) => {
+    // Funkce pro simulaci kopírování do schránky (upravená pro bezpečné rozmazání)
+    window.copyToClipboard = (text, type, element) => {
         navigator.clipboard.writeText(text).then(() => {
             const statusEl = $('global-copy-status');
             statusEl.textContent = `${type} zkopírováno!`;
             statusEl.classList.add('show');
+            
+            // Dočasné odstranění bluru
+            if (element) {
+                 const blurEl = element.closest('.card-number') ? element.closest('.card-number') : element.closest('.cvc-wrap');
+                 if (blurEl) blurEl.querySelector('.blurry-part').style.filter = 'none';
+            }
+            
             setTimeout(() => {
                 statusEl.classList.remove('show');
+                // Návrat bluru
+                if (element) {
+                    const blurEl = element.closest('.card-number') ? element.closest('.card-number') : element.closest('.cvc-wrap');
+                    if (blurEl) blurEl.querySelector('.blurry-part').style.filter = '';
+                }
             }, 1500);
         }).catch(err => {
             console.error('Nepodařilo se zkopírovat: ', err);
@@ -2261,26 +2495,36 @@ function renderCards(){
         cardEl.className = `amex-card ${card.type}-card`;
         
         const issuerName = card.type.includes('amex') ? 'AMERICAN EXPRESS' : card.type.toUpperCase();
+        const bank = store.banks.find(b => b.id === card.bankId);
         
         // Zobrazení loga/názvu karty
-        let logoHtml = '<div class="amex-logo">AX</div>'; 
+        let logoHtml = `<div class="amex-logo">${bank ? bank.name.substring(0, 2).toUpperCase() : 'CC'}</div>`; 
         if(card.type === 'visa') {
              logoHtml = '<i class="fab fa-cc-visa" style="font-size:28px;"></i>';
         } else if (card.type === 'mastercard') {
              logoHtml = '<i class="fab fa-cc-mastercard" style="font-size:28px;"></i>';
         }
         
+        // Formátování čísla karty s částečným blurrem (první 4 a poslední 4 jsou viditelné)
+        const firstFour = card.number.substring(0, 4);
+        const lastFour = card.number.substring(card.number.length - 4);
+        const middleBlurred = card.number.substring(4, card.number.length - 4).replace(/./g, 'X').match(/.{1,4}/g).join(' ');
+        
+        const fullCardNumberDisplay = `${firstFour} <span class="blurry-part">${middleBlurred}</span> ${lastFour}`;
+        
         cardEl.innerHTML = `
             <div class="amex-card-header">
-                <div class="card-issuer">${issuerName}</div>
+                <div class="card-issuer">${bank ? bank.name : 'Neznámá banka'} - ${issuerName}</div>
                 ${logoHtml}
             </div>
             
             <div class="card-chip"></div>
             
-            <div class="card-number">
-                <span>${card.number.match(/.{1,4}/g).join(' ')}</span>
-                <button class="card-copy-btn" onclick="event.stopPropagation(); copyToClipboard('${card.number}', 'Číslo karty')"><i class="fa fa-copy"></i></button>
+            <div class="card-number card-number-blurry">
+                <span>${fullCardNumberDisplay}</span>
+                <button class="card-copy-btn" onclick="event.stopPropagation(); copyToClipboard('${card.number}', 'Číslo karty', this)">
+                    <i class="fa fa-copy"></i>
+                </button>
             </div>
 
             <div class="card-details">
@@ -2290,9 +2534,16 @@ function renderCards(){
                 </div>
                 <div class="card-valid-thru">
                     <div>Platnost</div>
-                    <strong>${card.expiry}</strong>
-                    <button class="card-copy-btn" onclick="event.stopPropagation(); copyToClipboard('${card.cvv}', 'CVV/CVC')"><i class="fa fa-lock"></i> ${card.cvv}</button>
-                    <button class="card-copy-btn" style="color:var(--danger); margin-left: 10px;" onclick="event.stopPropagation(); deleteCard('${card.id}')"><i class="fa fa-trash"></i></button>
+                    <strong><span class="blurry-part">${card.expiry}</span></strong>
+                    <div class="cvc-wrap">
+                        <button class="card-copy-btn" onclick="event.stopPropagation(); copyToClipboard('${card.cvv}', 'CVV/CVC', this)">
+                            <i class="fa fa-lock"></i> 
+                        </button>
+                        <span class="blurry-part" style="font-size:16px; font-weight:700;">${card.cvv}</span>
+                        <button class="card-copy-btn" style="color:var(--danger); margin-left: 10px;" onclick="event.stopPropagation(); deleteCard('${card.id}')">
+                            <i class="fa fa-trash"></i>
+                        </button>
+                    </div>
                 </div>
             </div>
         `;
@@ -2306,25 +2557,27 @@ function renderCards(){
 
 
 function addCard() {
+    const bankId = $('newCardBank').value;
     const type = $('newCardType').value;
     const number = $('newCardNumber').value.trim().replace(/\s/g, '');
     const expiry = $('newCardExpiry').value.trim();
     const cvv = $('newCardCVV').value.trim();
     const owner = $('newCardOwner').value.trim().toUpperCase();
 
-    if (number.length < 16 || !expiry || !cvv || !owner) {
-        alert('Vyplňte prosím všechna pole správně. Číslo karty musí mít alespoň 16 číslic.');
+    if (!bankId || !type || number.length < 16 || !expiry || !cvv || !owner) {
+        alert('Vyplňte prosím všechna pole správně (včetně výběru banky). Číslo karty musí mít alespoň 16 číslic.');
         return;
     }
     
-    // Omezení vstupu pouze na Visa, Mastercard, a Amex (jako ukázku)
-    if (!['visa', 'mastercard', 'amex-platinum', 'amex-gold'].includes(type)) {
-         alert('Podporovány jsou pouze Visa a MasterCard.');
-         return;
+    // Validace MM/YY
+    if (!/^\d{2}\/\d{2}$/.test(expiry)) {
+        alert('Formát platnosti musí být MM/YY (např. 12/26).');
+        return;
     }
     
     const newCard = {
         id: Math.random().toString(36).substring(2, 9),
+        bankId: bankId, // Vazba na banku
         type: type,
         number: number,
         expiry: expiry,
@@ -2339,6 +2592,7 @@ function addCard() {
     $('newCardExpiry').value = '';
     $('newCardCVV').value = '';
     $('newCardOwner').value = '';
+    $('newCardBank').value = ''; // Reset výběru banky
     
     renderCards();
 }
@@ -2378,7 +2632,8 @@ function importAllJSON(event){
                 localStorage.setItem(LS_GOALS, JSON.stringify(importedStore.goals || []));
                 localStorage.setItem(LS_CATEGORIES, JSON.stringify(importedStore.categories || []));
                 localStorage.setItem(LS_CARDS, JSON.stringify(importedStore.cards || [])); 
-                localStorage.setItem(LS_RECURRING_PAYMENTS, JSON.stringify(importedStore.recurringPayments || [])); // Nový import
+                localStorage.setItem(LS_RECURRING_PAYMENTS, JSON.stringify(importedStore.recurringPayments || [])); 
+                localStorage.setItem(LS_BANKS, JSON.stringify(importedStore.banks || [])); // Nový import
                 localStorage.setItem(LS_CURRENCY, importedStore.currency || 'CZK');
                 localStorage.setItem(LS_EXCHANGE_RATE, importedStore.exchangeRate || 1);
                 
@@ -2424,7 +2679,8 @@ function redrawAll(){
 
   renderCategories(); 
   renderGoals(); 
-  renderCards(); 
+  renderBanks(); // Vykreslení bank před kartami
+  renderCards(); // Vykreslení karet, které potřebují seznam bank
   fillRecurringDaySelects(); // Inicializace dnů
   
   // Zobrazení defaultní sekce a aktivace nav tlačítka
