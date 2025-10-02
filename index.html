@@ -32,6 +32,9 @@
     /* Přidáno pro Visa/MasterCard simulaci */
     --visa-blue: linear-gradient(135deg, #1A479F, #196FB3); 
     --mastercard-red: linear-gradient(135deg, #E8291A, #C9000C);
+    
+    /* NOVÉ: Blur pro Card Stack */
+    --card-blur: rgba(255, 255, 255, 0.15); 
   }
   /* ÚPRAVA TMAVÉHO REŽIMU */
   [data-theme='dark']{
@@ -48,6 +51,7 @@
     --shadow: 0 4px 12px rgba(0,0,0,0.5); 
     --amex-gold: linear-gradient(135deg, #c3a06f, #806131); 
     --amex-platinum: linear-gradient(135deg, #8f9195, #5d5e62);
+    --card-blur: rgba(0, 0, 0, 0.15); 
   }
 
   /* RESET A ZÁKLADNÍ TYPOGRAFIE */
@@ -296,63 +300,134 @@
   }
   
   /* ========================================================
-     KARTA VZHLED - American Express a další (OPRAVA BOD 2)
+     KARTA VZHLED - American Express a další (OPRAVA KARET)
      ======================================================== */
   .card-container-wrap {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-      gap: 20px;
+      /* Místo gridu flex pro Card Stack efekt */
+      display: flex; 
+      flex-direction: column; 
+      align-items: center; /* Centrování karet */
+      gap: 0;
       margin-top: 20px;
+      /* Důležité: umožní kartám vyčnívat mimo flow */
+      position: relative; 
+      padding-top: 40px; /* Rezervace místa pro Card Stack */
+      min-height: 250px;
   }
+  
+  /* ÚPRAVA ZÁKLADNÍ KARTY PRO STACK EFEKT */
   .amex-card {
-      position: relative;
-      width: 100%;
+      position: absolute; /* Absolutní pro Card Stack */
+      width: 90%; /* Zmenšení, aby se ukázalo pozadí */
+      max-width: 400px;
       height: 190px; 
-      border-radius: 12px;
-      padding: 20px;
+      border-radius: 18px; /* Větší radius pro moderní vzhled */
+      padding: 25px;
       color: #fff;
       font-family: 'Inter', sans-serif; 
-      cursor: default;
-      box-shadow: 0 10px 20px rgba(0,0,0,0.25);
-      transition: all 0.3s ease;
+      cursor: pointer; /* Změněno na pointer pro lepší UX */
+      box-shadow: 0 10px 30px rgba(0,0,0,0.4); /* Výraznější stín */
+      transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94); /* Modernější animace */
       overflow: hidden;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      /* Defaultní styl - nahrazen třídami pro typ */
+      
+      /* Blur efekt na pozadí karty pro moderní skleněný vzhled */
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      background-color: var(--card-blur); /* Přidáno průsvitné pozadí */
+      
+      /* Defaultní styl */
       background: var(--amex-platinum); 
   }
   
+  /* STYLY PRO KARETNI STACK (PŘEKRYTÍ) */
+  /* Poslední karta (nahoře) */
+  .amex-card:last-child {
+      position: relative; /* Poslední karta je v normálním toku */
+      transform: translateY(0) rotate(0);
+      z-index: 10;
+  }
+  
+  /* Karty pod (stack efekt) */
+  .amex-card:nth-last-child(2) {
+      z-index: 9;
+      transform: translateY(15px) rotate(-1deg);
+  }
+  .amex-card:nth-last-child(3) {
+      z-index: 8;
+      transform: translateY(30px) rotate(2deg);
+  }
+  /* Další karty se skryjí */
+  .amex-card:nth-last-child(n+4) {
+      display: none;
+  }
+  
+  /* HOVER EFEKT: Zvýraznění a odsunutí */
+  .card-container-wrap:hover .amex-card {
+      position: relative; /* Při hoveru se všechny vrátí do flow */
+      transform: translateY(0) rotate(0);
+      box-shadow: var(--shadow); /* Zrušení výrazného stínu */
+      margin-bottom: 20px; /* Odsazení od sebe */
+      z-index: 5;
+      opacity: 1;
+  }
+  .card-container-wrap:hover .amex-card:nth-last-child(n+4) {
+      display: flex; /* Zobrazí se i skryté karty */
+  }
+
   /* Specifické styly pro typy karet */
-  .amex-gold-card { background: var(--amex-gold); }
-  .amex-platinum-card { background: var(--amex-platinum); }
-  .visa-card { background: var(--visa-blue); }
-  .mastercard-card { background: var(--mastercard-red); }
+  /* POZOR: Původní gradienty jsou nyní použity jako `background-image` 
+     a doplňují `background-color: var(--card-blur);` */
+  .amex-gold-card { background-image: var(--amex-gold); }
+  .amex-platinum-card { background-image: var(--amex-platinum); }
+  
+  /* Použití opacity pro Visa/Mastercard loga, pokud jsou v card designu */
+  .visa-card { background-image: var(--visa-blue); }
+  .mastercard-card { background-image: var(--mastercard-red); }
+
 
   .amex-card-header{
       display:flex; justify-content:space-between; align-items:center;
   }
   .card-issuer {
-      font-size: 10px; opacity: 0.8; font-weight: 500;
+      font-size: 11px; opacity: 0.8; font-weight: 500;
+      /* Přidán jemný text-shadow pro lepší čitelnost */
+      text-shadow: 0 1px 2px rgba(0,0,0,0.6); 
   }
   .amex-logo {
-      font-size: 22px;
+      font-size: 28px; /* Větší logo */
       font-weight: 900;
       color: #ffffff;
       text-shadow: 0 1px 2px rgba(0,0,0,0.4);
       font-family: 'Inter', sans-serif;
   }
+  
+  /* Moderní CHIP - zlatý */
   .card-chip {
       width: 40px;
       height: 30px;
-      background: linear-gradient(to right, #e0e0e0, #ffffff);
-      border-radius: 4px;
-      box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+      background: linear-gradient(135deg, #f0e68c, #daa520); /* Zlatý gradient */
+      border-radius: 6px;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.4);
       margin-top: 15px;
+      position: relative;
+      overflow: hidden;
   }
+  .card-chip::after {
+      content: '';
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: 60%; height: 60%;
+      border: 1px solid rgba(255, 255, 255, 0.4);
+      border-radius: 3px;
+  }
+
   .card-number {
-      font-size: 19px;
-      letter-spacing: 2px;
+      font-size: 22px; /* Větší číslo */
+      letter-spacing: 3px;
       text-shadow: 0 1px 2px rgba(0,0,0,0.4);
       opacity: 0.95;
       font-weight: 600;
@@ -360,36 +435,49 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
+      /* Mírné oddělení skupin */
+      gap: 10px;
   }
+  
   .card-copy-btn{
-      background: none; border:none; color: rgba(255,255,255,0.7);
+      background: none; border:none; 
+      color: rgba(255,255,255,0.7);
       cursor:pointer; transition: color .2s;
-      padding: 5px; /* Pro lepší dotyk */
+      padding: 5px; 
+      font-size: 16px; 
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      text-shadow: none; /* Zrušení stínu */
   }
-  .card-copy-btn:hover{ color: #fff; }
+  .card-copy-btn:hover{ color: #fff; transform: scale(1.1); }
 
   .card-details {
       display:flex; justify-content:space-between; align-items:flex-end;
       margin-top: 10px;
   }
   .card-owner-info div {
-      font-size: 10px; line-height: 1.2; opacity: 0.8;
+      font-size: 11px; line-height: 1.2; opacity: 0.8;
   }
   .card-owner {
       font-weight: 700;
-      font-size: 14px;
+      font-size: 15px;
       text-transform: uppercase;
       margin-top: 2px;
   }
   .card-valid-thru {
       text-align: right;
-      font-size: 10px;
+      font-size: 11px;
       line-height: 1.2;
       opacity: 0.8;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
   }
   .card-valid-thru strong {
-      font-size: 12px;
+      font-size: 13px;
       display: block;
+      margin-bottom: 5px;
   }
   .card-copy-status {
       position: fixed; /* Fixní zobrazení notifikace */
@@ -416,6 +504,8 @@
       .filter-item div.muted{ flex-basis: 40px; }
       .filter-item input, .filter-item select{ min-width:unset; }
       .filter-item .btn { flex-basis: 100%; margin-top: 10px; }
+      
+      .amex-card { width: 95%; padding: 20px; }
   }
   @media(max-width:350px){
       .footer-nav button span { display:none; }
@@ -587,14 +677,13 @@
   <section id="section-cards" style="display:none">
     <div class="card">
         <h2><i class="fa fa-credit-card" style="color:var(--accent)"></i> Moje Karty (Bankovní Přehled)</h2>
-        <div class="muted">Kliknutím na ikonku zkopírujete údaj do schránky.</div>
+        <div class="muted">Karty se zobrazují jako balíček pro přehledný pohled. Kliknutím na ikonu zkopírujete údaj.</div>
 
         <div class="form-row" style="margin-top:20px">
             <select id="newCardType" style="flex-grow:0;">
-                <option value="amex-platinum">American Express Platinum</option>
-                <option value="amex-gold">American Express Gold</option>
                 <option value="visa">Visa</option>
                 <option value="mastercard">MasterCard</option>
+                <option value="amex-platinum">American Express Platinum (Demo)</option>
             </select>
             <input type="text" id="newCardNumber" placeholder="Číslo karty (16-19 číslic)" style="flex-basis: 200px;"/>
             <input type="text" id="newCardExpiry" placeholder="MM/YY" style="flex-basis: 80px;"/>
@@ -2164,16 +2253,27 @@ function renderCards(){
         }
     };
 
-    store.cards.forEach(card => {
+    // POZOR: Sortování karet, aby se poslední přidaná (poslední v poli) zobrazila jako TOP (LAST CHILD)
+    const sortedCards = [...store.cards].reverse();
+
+    sortedCards.forEach(card => {
         const cardEl = document.createElement('div');
         cardEl.className = `amex-card ${card.type}-card`;
         
         const issuerName = card.type.includes('amex') ? 'AMERICAN EXPRESS' : card.type.toUpperCase();
         
+        // Zobrazení loga/názvu karty
+        let logoHtml = '<div class="amex-logo">AX</div>'; 
+        if(card.type === 'visa') {
+             logoHtml = '<i class="fab fa-cc-visa" style="font-size:28px;"></i>';
+        } else if (card.type === 'mastercard') {
+             logoHtml = '<i class="fab fa-cc-mastercard" style="font-size:28px;"></i>';
+        }
+        
         cardEl.innerHTML = `
             <div class="amex-card-header">
                 <div class="card-issuer">${issuerName}</div>
-                <div class="amex-logo">AX</div>
+                ${logoHtml}
             </div>
             
             <div class="card-chip"></div>
@@ -2192,7 +2292,7 @@ function renderCards(){
                     <div>Platnost</div>
                     <strong>${card.expiry}</strong>
                     <button class="card-copy-btn" onclick="event.stopPropagation(); copyToClipboard('${card.cvv}', 'CVV/CVC')"><i class="fa fa-lock"></i> ${card.cvv}</button>
-                    <button class="card-copy-btn" style="color:var(--danger)" onclick="event.stopPropagation(); deleteCard('${card.id}')"><i class="fa fa-trash"></i></button>
+                    <button class="card-copy-btn" style="color:var(--danger); margin-left: 10px;" onclick="event.stopPropagation(); deleteCard('${card.id}')"><i class="fa fa-trash"></i></button>
                 </div>
             </div>
         `;
@@ -2215,6 +2315,12 @@ function addCard() {
     if (number.length < 16 || !expiry || !cvv || !owner) {
         alert('Vyplňte prosím všechna pole správně. Číslo karty musí mít alespoň 16 číslic.');
         return;
+    }
+    
+    // Omezení vstupu pouze na Visa, Mastercard, a Amex (jako ukázku)
+    if (!['visa', 'mastercard', 'amex-platinum', 'amex-gold'].includes(type)) {
+         alert('Podporovány jsou pouze Visa a MasterCard.');
+         return;
     }
     
     const newCard = {
